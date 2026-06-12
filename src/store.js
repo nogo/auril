@@ -38,11 +38,11 @@ export class Store {
     const patch = typeof updater === 'function' ? updater(this.#state) : updater;
     this.#state = /** @type {S} */ ({ ...this.#state, ...patch });
     dev.log('store.set', patch);
-    this.#persist();
     if (this.#pending) return;
     this.#pending = true;
     queueMicrotask(() => {
       this.#pending = false;
+      this.#persist();
       for (const fn of [...this.#subs]) fn(this.#state);
     });
   }

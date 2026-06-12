@@ -48,3 +48,21 @@ test('unsubscribe stops notifications', async () => {
   await tick();
   expect(calls).toBe(1);
 });
+
+test('persist writes once per microtask batch', async () => {
+  let writes = 0;
+  globalThis.localStorage = /** @type {any} */ ({
+    getItem: () => null,
+    setItem: () => { writes++; },
+  });
+  try {
+    const s = new Store({ n: 0 }, { persist: ['n'], key: 'batch-test' });
+    s.set({ n: 1 });
+    s.set({ n: 2 });
+    expect(writes).toBe(0);   // nothing written synchronously
+    await tick();
+    expect(writes).toBe(1);   // one write per batch
+  } finally {
+    delete (/** @type {any} */ (globalThis)).localStorage;
+  }
+});

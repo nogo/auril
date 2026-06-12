@@ -34,14 +34,18 @@ export class AurilElement extends HTMLElement {
   }
 
   /**
-   * addEventListener that is removed automatically on disconnect.
+   * addEventListener that is removed automatically on disconnect. A caller-
+   * provided opts.signal is combined via AbortSignal.any — either signal
+   * removes the listener.
    * @param {EventTarget} target
    * @param {string} type
    * @param {EventListenerOrEventListenerObject} handler
    * @param {AddEventListenerOptions} [opts]
    */
   on(target, type, handler, opts = {}) {
-    target.addEventListener(type, handler, { ...opts, signal: this.signal });
+    if (!this.signal) throw new Error(`[auril] <${this.localName}>: on() called before connect — call it from onConnect()`);
+    const signal = opts.signal ? AbortSignal.any([this.signal, opts.signal]) : this.signal;
+    target.addEventListener(type, handler, { ...opts, signal });
   }
 
   /**
@@ -55,6 +59,7 @@ export class AurilElement extends HTMLElement {
   watch(selectorOrCb, maybeCb) {
     const store = /** @type {typeof AurilElement} */ (this.constructor).store;
     if (!store) throw new Error(`[auril] <${this.localName}>: assign AurilElement.store before calling watch()`);
+    if (!this.signal) throw new Error(`[auril] <${this.localName}>: watch() called before connect — call it from onConnect()`);
     const selector = typeof maybeCb === 'function' ? selectorOrCb : null;
     const cb = (selector ? maybeCb : selectorOrCb) ?? (() => this.update());
     let prev = selector ? selector(store.state) : undefined;
@@ -65,7 +70,7 @@ export class AurilElement extends HTMLElement {
       prev = next;
       cb(next, state);
     });
-    this.signal?.addEventListener('abort', unsub, { once: true });
+    this.signal.addEventListener('abort', unsub, { once: true });
   }
 
   /** Morph the live DOM to match render(). Preserves focus, selection, scroll. */

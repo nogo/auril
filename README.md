@@ -7,7 +7,7 @@ stateful web apps without npm, a bundler, transpilation, JSX, a virtual DOM, or
 a component compiler. Files ship as plain ES modules. The debugger shows the
 same source you wrote.
 
-The kernel is intentionally small: top-level `src/*.js` currently fits in 363
+The kernel is intentionally small: top-level `src/*.js` currently fits in 338
 lines, plus one vendored DOM morphing file.
 
 ## Why
@@ -182,8 +182,8 @@ silently to in-memory state.
 
 ### `Router`
 
-`Router` is a small History API router using `URLPattern` where available,
-with a tiny fallback.
+`Router` is a small client-side router built on the Navigation API and
+`URLPattern` (Baseline newly available 2026).
 
 ```js
 const router = new Router()
@@ -195,8 +195,10 @@ const router = new Router()
 router.go('/v/personal/');
 ```
 
-Same-origin link clicks are intercepted unless the click is modified,
-cross-origin, `target=`, `download`, non-left-button, or already prevented.
+One `navigate` listener intercepts same-origin navigations — link clicks,
+back/forward, and `go()`. Hash-only changes, downloads, form submissions, and
+cross-origin navigations are left to the browser, as are unmatched paths when
+no `notFound` handler is registered.
 
 ### `delegate`
 

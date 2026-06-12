@@ -2,36 +2,21 @@ import { dev } from './dev.js';
 
 /**
  * @typedef {(params: Record<string, string | undefined>, path: string) => void} RouteHandler
- * @typedef {{ exec(input: { pathname: string }): { pathname: { groups: Record<string, string | undefined> } } | null }} Matcher
  */
 
+// Navigation API + URLPattern globals (Baseline newly available 2026).
+// Accessed as `any` until they land in lib.dom.d.ts.
 const URLPatternImpl = /** @type {any} */ (globalThis).URLPattern;
+const navigationImpl = /** @type {any} */ (globalThis).navigation;
 
-/** @param {string} pathname @returns {Matcher} */
-function compile(pathname) {
-  if (URLPatternImpl) return new URLPatternImpl({ pathname });
-  // Fallback for engines without URLPattern: ':name' params and '*' wildcards.
-  /** @type {string[]} */
-  const names = [];
-  const source = pathname
-    .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
-    .replace(/:(\w+)/g, (_, name) => (names.push(name), '([^/]+)'))
-    .replace(/\*/g, '.*');
-  const re = new RegExp(`^${source}$`);
-  return {
-    exec({ pathname: path }) {
-      const match = re.exec(path);
-      if (!match) return null;
-      /** @type {Record<string, string | undefined>} */
-      const groups = {};
-      names.forEach((name, i) => (groups[name] = match[i + 1]));
-      return { pathname: { groups } };
-    },
-  };
-}
-
+/**
+ * Client-side router built on the Navigation API and URLPattern (':param' and
+ * '*' syntax). One `navigate` listener intercepts same-origin navigations —
+ * link clicks, back/forward, and go(). Route changes are wrapped in a View
+ * Transition when supported.
+ */
 export class Router {
-  /** @type {{ pattern: Matcher, handler: RouteHandler }[]} */
+  /** @type {{ pattern: any, handler: RouteHandler }[]} */
   #routes = [];
   /** @type {((path: string) => void) | null} */
   #notFound = null;
@@ -42,7 +27,7 @@ export class Router {
    * @param {RouteHandler} handler
    */
   route(pattern, handler) {
-    this.#routes.push({ pattern: compile(pattern), handler });
+    this.#routes.push({ pattern: new URLPatternImpl({ pathname: pattern }), handler });
     return this;
   }
 
@@ -52,14 +37,16 @@ export class Router {
     return this;
   }
 
-  /**
-   * Resolve the current URL, then handle popstate and same-origin link clicks.
-   * @param {{ links?: boolean }} [options]
-   */
-  start({ links = true } = {}) {
-    window.addEventListener('popstate', () => this.#resolve());
-    if (links) document.addEventListener('click', (event) => this.#onClick(event));
-    this.#resolve();
+  /** Resolve the current URL, then intercept same-origin navigations. */
+  start() {
+    navigationImpl.addEventListener('navigate', (/** @type {any} */ event) => {
+      if (!event.canIntercept || event.hashChange || event.downloadRequest !== null || event.formData) return;
+      const apply = this.#match(new URL(event.destination.url).pathname);
+      if (!apply) return; // no route, no notFound — let the browser navigate
+      event.intercept({ handler: () => this.#transition(apply) });
+    });
+    const apply = this.#match(location.pathname);
+    if (apply) this.#transition(apply);
     return this;
   }
 
@@ -69,38 +56,21 @@ export class Router {
    */
   go(path, { replace = false } = {}) {
     if (path === location.pathname + location.search) return;
-    if (replace) history.replaceState({}, '', path);
-    else history.pushState({}, '', path);
-    this.#resolve();
+    navigationImpl.navigate(path, { history: replace ? 'replace' : 'push' });
   }
 
-  /** @param {MouseEvent} event */
-  #onClick(event) {
-    if (event.defaultPrevented || event.button !== 0) return;
-    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-    const anchor = event.target instanceof Element
-      ? /** @type {HTMLAnchorElement | null} */ (event.target.closest('a[href]'))
-      : null;
-    if (!anchor || anchor.target || anchor.hasAttribute('download')) return;
-    if (anchor.origin !== location.origin) return;
-    event.preventDefault();
-    this.go(anchor.pathname + anchor.search);
-  }
-
-  #resolve() {
-    const path = location.pathname;
+  /** @param {string} path @returns {(() => void) | null} thunk running the matched handler */
+  #match(path) {
     for (const { pattern, handler } of this.#routes) {
       const match = pattern.exec({ pathname: path });
       if (!match) continue;
       const params = match.pathname.groups ?? {};
       dev.log('route', path, params);
-      return this.#transition(() => handler(params, path));
+      return () => handler(params, path);
     }
     dev.log('route (not found)', path);
-    if (this.#notFound) {
-      const handler = this.#notFound;
-      this.#transition(() => handler(path));
-    }
+    const notFound = this.#notFound;
+    return notFound ? () => notFound(path) : null;
   }
 
   /** @param {() => void} apply */

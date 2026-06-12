@@ -1,7 +1,7 @@
 # auril.js
 
 A no-build frontend kernel for personal apps to kill the bloat.
-Plain ES modules over web standards: **363 lines of kernel you own** (typed
+Plain ES modules over web standards: **338 lines of kernel you own** (typed
 via JSDoc), plus one vendored file (Idiomorph) for DOM morphing. No npm, no
 bundler, no transpilation — the files that ship are the files you wrote.
 
@@ -94,8 +94,10 @@ class MonthlyList extends AurilElement {
 customElements.define('monthly-list', MonthlyList);
 ```
 
-- `this.on(target, type, handler)` — `addEventListener` auto-removed on
-  disconnect (AbortController under the hood; `this.signal` is exposed).
+- `this.on(target, type, handler, opts?)` — `addEventListener` auto-removed on
+  disconnect (AbortController under the hood; `this.signal` is exposed). A
+  caller-provided `opts.signal` is combined via `AbortSignal.any` — either
+  signal removes the listener.
 - `this.watch()` — re-render (`update()`) on **any** store change.
 - `this.watch(cb)` — `cb(state)` on any store change.
 - `this.watch(selector, cb)` — `cb(slice, state)` only when the selected
@@ -103,6 +105,8 @@ customElements.define('monthly-list', MonthlyList);
   `this.watch((s) => s.yearMonth, () => this.update())`.
 - `this.update()` — `morph(this, this.render())`; logs the failing tag name
   on render errors.
+- `on()` and `watch()` throw when called before connect — call them from
+  `onConnect()`, never the constructor.
 
 Light DOM only — global CSS applies; no shadow root.
 
@@ -120,13 +124,14 @@ const unsub = store.subscribe((state) => ...);
 
 Notifications are **batched per microtask**: N synchronous `set()` calls →
 one notify with the final state. Persisted keys are hydrated on construction
-and written on every set; storage failures (quota, tests) degrade silently to
-in-memory.
+and written **once per microtask batch** (same cadence as notifications);
+storage failures (quota, tests) degrade silently to in-memory.
 
 ### router.js — `Router`
 
-History-API router using **URLPattern** (`:param` and `*` syntax; tiny
-regex fallback for engines without it). Wraps route changes in a View
+Client-side router built on the **Navigation API** and **URLPattern**
+(`:param` and `*` syntax) — both Baseline newly available 2026 (Chrome 102+,
+Firefox 147+, Safari 26.2+); no fallback. Wraps route changes in a View
 Transition when supported.
 
 ```js
@@ -138,8 +143,12 @@ new Router()
 router.go('/v/personal/');             // programmatic navigation
 ```
 
-Link interception skips: modified clicks, non-left buttons, `target=`,
-`download`, cross-origin, and `event.preventDefault()`ed clicks.
+One `navigate` listener intercepts same-origin navigations — link clicks,
+back/forward, and `go()`. Hash-only changes, downloads, form submissions,
+cross-origin navigations, and modified clicks are left to the browser via the
+platform's navigate-event flags rather than hand-rolled checks. An unmatched
+path with no `notFound` handler falls through to a real browser navigation.
+`start()` takes no options.
 
 ### delegate.js — `delegate(root, type, selector, handler)`
 
