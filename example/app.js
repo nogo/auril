@@ -1,4 +1,4 @@
-import { html, AurilElement, Store, delegate } from '../src/index.js';
+import { html, AurilElement, Store } from '../src/index.js';
 
 /** @typedef {{ id: number, text: string, done: boolean }} Todo */
 /** @typedef {'all' | 'active' | 'done'} Filter */
@@ -41,17 +41,17 @@ class TodoApp extends AurilElement {
       input.value = '';
     });
 
-    delegate(this, 'change', '.toggle', (_, el) => {
+    this.delegate('change', '.toggle', (_, el) => {
       const id = this.#rowId(el);
       store.set((s) => ({ todos: s.todos.map((t) => (t.id === id ? { ...t, done: !t.done } : t)) }));
     });
 
-    delegate(this, 'click', '.destroy', (_, el) => {
+    this.delegate('click', '.destroy', (_, el) => {
       const id = this.#rowId(el);
       store.set((s) => ({ todos: s.todos.filter((t) => t.id !== id) }));
     });
 
-    delegate(this, 'dblclick', 'label', (_, el) => {
+    this.delegate('dblclick', 'label', (_, el) => {
       this.#editingId = this.#rowId(el);
       this.update(); // local state changed — re-render without touching the store
       const edit = /** @type {HTMLInputElement | null} */ (this.querySelector('.edit'));
@@ -59,7 +59,7 @@ class TodoApp extends AurilElement {
       edit?.setSelectionRange(edit.value.length, edit.value.length);
     });
 
-    delegate(this, 'keydown', '.edit', (event) => {
+    this.delegate('keydown', '.edit', (event) => {
       if (!(event instanceof KeyboardEvent)) return;
       if (event.key === 'Enter') this.#commitEdit();
       if (event.key === 'Escape') {
@@ -68,13 +68,13 @@ class TodoApp extends AurilElement {
       }
     });
 
-    delegate(this, 'focusout', '.edit', () => this.#commitEdit());
+    this.delegate('focusout', '.edit', () => this.#commitEdit());
 
-    delegate(this, 'click', '.filter', (_, el) => {
+    this.delegate('click', '.filter', (_, el) => {
       store.set({ filter: /** @type {Filter} */ (el.getAttribute('data-filter')) });
     });
 
-    delegate(this, 'click', '.clear-done', () => {
+    this.delegate('click', '.clear-done', () => {
       store.set((s) => ({ todos: s.todos.filter((t) => !t.done) }));
     });
   }

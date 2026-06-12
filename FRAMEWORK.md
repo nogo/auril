@@ -98,6 +98,9 @@ customElements.define('monthly-list', MonthlyList);
   disconnect (AbortController under the hood; `this.signal` is exposed). A
   caller-provided `opts.signal` is combined via `AbortSignal.any` — either
   signal removes the listener.
+- `this.delegate(type, selector, handler, opts?)` — event delegation scoped to
+  this element, auto-removed on disconnect (same `opts.signal` merge as `on()`).
+  Prefer it over bare `delegate(this, …)` so listeners die with the element.
 - `this.watch()` — re-render (`update()`) on **any** store change.
 - `this.watch(cb)` — `cb(state)` on any store change.
 - `this.watch(selector, cb)` — `cb(slice, state)` only when the selected
@@ -105,8 +108,8 @@ customElements.define('monthly-list', MonthlyList);
   `this.watch((s) => s.yearMonth, () => this.update())`.
 - `this.update()` — `morph(this, this.render())`; logs the failing tag name
   on render errors.
-- `on()` and `watch()` throw when called before connect — call them from
-  `onConnect()`, never the constructor.
+- `on()`, `delegate()`, and `watch()` throw when called before connect — call
+  them from `onConnect()`, never the constructor.
 
 Light DOM only — global CSS applies; no shadow root.
 
@@ -115,7 +118,7 @@ Light DOM only — global CSS applies; no shadow root.
 ```js
 const store = new Store(
   { yearMonth: '2026-06', transactions: [] },        // defaults
-  { persist: ['yearMonth'], key: 'budget-store' },   // localStorage slice
+  { persist: ['yearMonth'], key: 'budget-store', version: 1 }, // persisted slice; bump version to drop stale data
 );
 store.set({ yearMonth: '2026-07' });                 // patch
 store.set((s) => ({ count: s.count + 1 }));          // functional patch
@@ -123,9 +126,16 @@ const unsub = store.subscribe((state) => ...);
 ```
 
 Notifications are **batched per microtask**: N synchronous `set()` calls →
-one notify with the final state. Persisted keys are hydrated on construction
-and written **once per microtask batch** (same cadence as notifications);
-storage failures (quota, tests) degrade silently to in-memory.
+one notify with the final state; a subscriber that throws is caught and logged
+so it never blocks the rest of the batch. Persisted keys are hydrated on
+construction and written **once per microtask batch** (same cadence as
+notifications); storage failures (quota, tests) degrade silently to in-memory.
+An optional `version` discards incompatible saved data (defaults win) instead
+of hydrating a stale shape — migrations stay app code; without it the payload
+stays flat, so existing apps keep their stored data.
+Persisted slices also sync **across tabs**: a `storage` event from another tab
+re-applies the saved keys (last write wins; non-persisted keys untouched), so
+two open tabs stay in step.
 
 ### router.js — `Router`
 
@@ -157,9 +167,12 @@ matches `selector` inside `root`.
 
 ### dev.js — `dev`
 
-`dev.log(...)` prints `[auril]`-prefixed debug output (store patches, route
-resolutions) when enabled. Enable with `?auril-dev` in the URL or
-`dev.enabled = true`.
+`dev.log(...)` prints `[auril]`-prefixed debug output when enabled — store
+patches, route resolutions, and `AurilElement` connect / disconnect / update
+cycles (useful for spotting re-render storms). When dev is enabled each `Store`
+also registers itself at `globalThis.__auril[key]`, so the console can poke live
+state: `__auril['auril-todos'].state`. Enable with `?auril-dev` in the URL or
+`dev.enabled = true` at startup.
 
 ## Conventions
 
@@ -173,6 +186,12 @@ resolutions) when enabled. Enable with `?auril-dev` in the URL or
   ```
 - Stable `id`s on anything morph must track across renders.
 - `raw()` only at trusted edges (markdown renderer output) — never user input.
+- **Always quote interpolated attributes**: `class="${x}"`, not `class=${x}`.
+  `` html`` `` escapes `&<>"'` but not spaces or `=`, so an unquoted attribute
+  interpolation is an injection vector its escaping cannot close.
+- Inside an `AurilElement`, use `this.delegate()` (or pass `{ signal: this.signal }`
+  to bare `delegate()`) so listeners die on disconnect — bare `delegate(this, …)`
+  re-binds and stacks listeners on every reconnect.
 - Modals, menus, tooltips: `<dialog>` and `popover` — zero kernel code.
 - Forms: native validation (`required`, `:user-invalid`) before JS.
 
@@ -199,6 +218,25 @@ autocomplete, signature help, and shape-checking; `Store` is generic, so
 Verify headlessly (dev-time only; typescript is fetched on demand, never a
 project dependency): `bunx tsc -p jsconfig.json`. Apps that vendor the kernel
 add their own ~10-line `jsconfig.json` to get the same checking.
+
+Headless DOM tests (`element.js`, `delegate.js`) use happy-dom via a dev-only
+`devDependency` and a `test/setup.js` preload (`bunfig.toml`). Like `typescript`,
+it is a dev tool only — never a runtime dependency, never vendored (`vendor.sh`
+copies `src/` alone). `router.js` and `morph.js` stay untested headless:
+happy-dom has no Navigation API or URLPattern.
+
+`AurilElement.store` is typed `Store<any>`, so `this.watch((s) => s.todos, …)`
+sees `s` as `any`. For a fully typed selector and slice, close over the concrete
+store instead of routing through the static field — the generic flows through:
+
+```js
+import { store } from './store.js';            // your Store<{ todos: Todo[] }>
+this.watch(() => store.state.todos, (todos) => { /* todos: Todo[] */ });
+```
+
+`watch()`'s JSDoc `@overload`s already type each arity (no-arg, `cb`,
+`selector + cb`). Naming the tag `html` also lets editors with a lit / inline-html
+extension highlight and format the template literals (editor-dependent).
 
 ## Using with AI
 

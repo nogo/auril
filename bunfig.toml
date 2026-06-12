@@ -1,0 +1,4 @@
+[test]
+# Register happy-dom globals (window, document, customElements, HTMLElement, …)
+# so DOM-dependent tests can run headless. Dev-only; never vendored into apps.
+preload = ["./test/setup.js"]

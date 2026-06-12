@@ -44,10 +44,11 @@ See [FRAMEWORK.md](./FRAMEWORK.md) for the full contract.
 
 ## Quick Start
 
-Clone the repo and serve it statically:
+Clone the repo and serve it with the bundled dev server (live reload + SPA
+deep-link fallback):
 
 ```sh
-python3 -m http.server
+bun serve.js
 ```
 
 Then open:
@@ -61,6 +62,10 @@ Enable debug logging with:
 ```text
 http://localhost:8000/example/?auril-dev
 ```
+
+No Bun? Any static server works, e.g. `python3 -m http.server` — but it has no
+live reload and 404s on routed deep links (refreshing `/v/personal/`), so it
+cannot develop a `Router` app.
 
 ## Example
 
@@ -111,6 +116,10 @@ const list = html`<ul>${todos.map(item)}</ul>`;
 Use `raw(str)` only for trusted markup, such as sanitized markdown renderer
 output. Never wrap user input in `raw()`.
 
+Always **quote interpolated attributes** — `class="${x}"`, never `class=${x}`.
+Escaping covers `&<>"'` but not spaces or `=`, so an unquoted attribute value is
+an injection vector escaping cannot close.
+
 ### `morph`
 
 `morph(target, content, options?)` updates a target element's children to match
@@ -142,6 +151,9 @@ Useful methods:
 
 - `this.on(target, type, handler)` adds an event listener and removes it
   automatically on disconnect.
+- `this.delegate(type, selector, handler)` delegates events to matching
+  descendants and removes the listener automatically on disconnect — prefer it
+  over bare `delegate(this, …)` inside a component.
 - `this.watch()` re-renders on any store change.
 - `this.watch(cb)` calls `cb(state)` on any store change.
 - `this.watch(selector, cb)` calls `cb(slice, state)` only when the selected
@@ -166,7 +178,7 @@ microtask, so multiple synchronous `set()` calls produce one notification.
 ```js
 const store = new Store(
   { filter: 'all', todos: [] },
-  { persist: ['filter'], key: 'todos-store' },
+  { persist: ['filter'], key: 'todos-store', version: 1 },
 );
 
 store.set({ filter: 'done' });
@@ -178,7 +190,12 @@ const unsubscribe = store.subscribe((state) => {
 ```
 
 Persistence uses `localStorage` for selected keys. Storage failures degrade
-silently to in-memory state.
+silently to in-memory state. An optional `version` discards incompatible saved
+data (defaults win) when you bump it after a persisted shape changes, instead
+of hydrating stale data. A subscriber that throws is caught and logged, so one
+bad subscriber never blocks the others in a batch.
+Persisted slices also sync across browser tabs: a `storage` event from another
+tab re-applies the saved keys (last write wins; non-persisted keys untouched).
 
 ### `Router`
 
@@ -211,6 +228,11 @@ delegate(this, 'click', '.destroy', (event, button) => {
 });
 ```
 
+`delegate(root, …)` is the bare helper. Inside an `AurilElement`, prefer
+`this.delegate(type, selector, handler)`, which scopes to the element and removes
+the listener on disconnect; bare `delegate(this, …)` stacks listeners across
+reconnects.
+
 ### `dev`
 
 Debug logging is opt-in:
@@ -220,7 +242,9 @@ dev.enabled = true;
 dev.log('store.set', patch);
 ```
 
-Or add `?auril-dev` to the URL.
+Or add `?auril-dev` to the URL. When enabled, `AurilElement` logs each
+connect / disconnect / update, and every `Store` registers itself at
+`globalThis.__auril[key]` for console inspection (`__auril['todos-store'].state`).
 
 ## Vendoring Into An App
 
@@ -241,6 +265,12 @@ Upgrade deliberately by re-running `vendor.sh` and reviewing the diff like any
 dependency bump.
 
 ## Development
+
+Run the dev server (static files, live reload, SPA deep-link fallback):
+
+```sh
+bun serve.js [port]   # default port 8000
+```
 
 Run tests:
 
@@ -277,6 +307,7 @@ example/         complete todo app
 test/            bun tests
 FRAMEWORK.md     compact canonical framework contract
 vendor.sh        copy kernel into an app
+serve.js         static dev server (live reload, SPA fallback)
 ```
 
 ## Guardrail For Changes

@@ -3,6 +3,9 @@ import { Store } from '../src/store.js';
 
 const tick = () => new Promise((resolve) => queueMicrotask(resolve));
 
+/** install a localStorage stub that overrides happy-dom's readonly global @param {any} stub */
+const setLocalStorage = (stub) => Object.defineProperty(globalThis, 'localStorage', { value: stub, configurable: true, writable: true });
+
 test('set merges a patch', () => {
   const s = new Store({ a: 1, b: 2 });
   s.set({ b: 3 });
@@ -51,10 +54,7 @@ test('unsubscribe stops notifications', async () => {
 
 test('persist writes once per microtask batch', async () => {
   let writes = 0;
-  globalThis.localStorage = /** @type {any} */ ({
-    getItem: () => null,
-    setItem: () => { writes++; },
-  });
+  setLocalStorage({ getItem: () => null, setItem: () => { writes++; } });
   try {
     const s = new Store({ n: 0 }, { persist: ['n'], key: 'batch-test' });
     s.set({ n: 1 });
@@ -62,6 +62,78 @@ test('persist writes once per microtask batch', async () => {
     expect(writes).toBe(0);   // nothing written synchronously
     await tick();
     expect(writes).toBe(1);   // one write per batch
+  } finally {
+    delete (/** @type {any} */ (globalThis)).localStorage;
+  }
+});
+
+test('a throwing subscriber does not block later subscribers', async () => {
+  const s = new Store({ n: 0 });
+  let reached = 0;
+  s.subscribe(() => { throw new Error('boom'); });
+  s.subscribe(() => { reached++; });
+  const orig = console.error;
+  console.error = () => {}; // the thrown error is logged, not rethrown
+  try {
+    s.set({ n: 1 });
+    await tick();
+  } finally {
+    console.error = orig;
+  }
+  expect(reached).toBe(1);
+});
+
+/** map-backed localStorage stub @param {Record<string, string>} [initial] */
+function memStorage(initial = {}) {
+  const map = new Map(Object.entries(initial));
+  return /** @type {any} */ ({
+    getItem: (/** @type {string} */ k) => (map.has(k) ? map.get(k) : null),
+    setItem: (/** @type {string} */ k, /** @type {string} */ v) => { map.set(k, v); },
+    removeItem: (/** @type {string} */ k) => { map.delete(k); },
+  });
+}
+
+test('versioned hydrate applies saved data when version matches', () => {
+  setLocalStorage(memStorage({ 'v-test': JSON.stringify({ v: 2, data: { n: 7 } }) }));
+  try {
+    const s = new Store({ n: 0 }, { persist: ['n'], key: 'v-test', version: 2 });
+    expect(s.state.n).toBe(7);
+  } finally {
+    delete (/** @type {any} */ (globalThis)).localStorage;
+  }
+});
+
+test('versioned hydrate discards saved data on version mismatch', () => {
+  setLocalStorage(memStorage({ 'v-test': JSON.stringify({ v: 1, data: { n: 7 } }) }));
+  try {
+    const s = new Store({ n: 0 }, { persist: ['n'], key: 'v-test', version: 2 });
+    expect(s.state.n).toBe(0); // stale data discarded, defaults win
+  } finally {
+    delete (/** @type {any} */ (globalThis)).localStorage;
+  }
+});
+
+test('versioned persist writes an envelope payload', async () => {
+  const ls = memStorage();
+  setLocalStorage(ls);
+  try {
+    const s = new Store({ n: 0 }, { persist: ['n'], key: 'env-test', version: 3 });
+    s.set({ n: 5 });
+    await tick();
+    expect(JSON.parse(ls.getItem('env-test'))).toEqual({ v: 3, data: { n: 5 } });
+  } finally {
+    delete (/** @type {any} */ (globalThis)).localStorage;
+  }
+});
+
+test('unversioned persist writes a flat payload', async () => {
+  const ls = memStorage();
+  setLocalStorage(ls);
+  try {
+    const s = new Store({ n: 0 }, { persist: ['n'], key: 'flat-test' });
+    s.set({ n: 5 });
+    await tick();
+    expect(JSON.parse(ls.getItem('flat-test'))).toEqual({ n: 5 });
   } finally {
     delete (/** @type {any} */ (globalThis)).localStorage;
   }

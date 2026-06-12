@@ -1,4 +1,6 @@
 import { morph } from './morph.js';
+import { delegate } from './delegate.js';
+import { dev } from './dev.js';
 
 /**
  * Optional hooks a subclass may define.
@@ -26,11 +28,13 @@ export class AurilElement extends HTMLElement {
     const self = /** @type {AurilElement & Hooks} */ (this);
     self.onConnect?.();
     if (self.render) this.update();
+    dev.log('connect', this.localName);
   }
 
   disconnectedCallback() {
     this._ac?.abort();
     /** @type {AurilElement & Hooks} */ (this).onDisconnect?.();
+    dev.log('disconnect', this.localName);
   }
 
   /**
@@ -48,6 +52,37 @@ export class AurilElement extends HTMLElement {
     target.addEventListener(type, handler, { ...opts, signal });
   }
 
+  /**
+   * delegate() scoped to this element, auto-removed on disconnect. A caller-
+   * provided opts.signal is combined via AbortSignal.any — either signal
+   * removes the listener.
+   * @param {string} type
+   * @param {string} selector
+   * @param {(event: Event, match: Element) => void} handler
+   * @param {AddEventListenerOptions} [opts]
+   */
+  delegate(type, selector, handler, opts = {}) {
+    if (!this.signal) throw new Error(`[auril] <${this.localName}>: delegate() called before connect — call it from onConnect()`);
+    const signal = opts.signal ? AbortSignal.any([this.signal, opts.signal]) : this.signal;
+    delegate(this, type, selector, handler, { ...opts, signal });
+  }
+
+  /**
+   * @overload
+   * @returns {void}
+   */
+  /**
+   * @overload
+   * @param {(state: any) => void} cb
+   * @returns {void}
+   */
+  /**
+   * @template T
+   * @overload
+   * @param {(state: any) => T} selector
+   * @param {(slice: T, state: any) => void} cb
+   * @returns {void}
+   */
   /**
    * watch()              — re-render (update()) on any store change
    * watch(cb)            — cb(state) on any store change
@@ -78,6 +113,7 @@ export class AurilElement extends HTMLElement {
     const self = /** @type {AurilElement & Hooks} */ (this);
     if (!self.render) return;
     try {
+      dev.log('update', this.localName);
       morph(this, self.render());
     } catch (err) {
       console.error(`[auril] render failed in <${this.localName}>`, err);
