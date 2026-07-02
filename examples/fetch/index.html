@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>auril.js — async search</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: system-ui, sans-serif; max-width: 30rem; margin: 3rem auto; padding: 0 1rem; }
+    h1 { font-weight: 200; font-size: 2.5rem; opacity: .5; margin: 0 0 1rem; }
+    .search {
+      width: 100%; box-sizing: border-box; font: inherit; padding: .6rem .8rem;
+      border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+      border-radius: .4rem; background: transparent; color: inherit;
+    }
+    .state { opacity: .6; }
+    .state.error { color: #b33; opacity: 1; }
+    .state button { font: inherit; cursor: pointer; }
+    .team { list-style: none; padding: 0; }
+    .team li { display: flex; justify-content: space-between; gap: 1rem; padding: .45rem .2rem;
+      border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent); }
+    .team span { opacity: .6; }
+    .team .empty { opacity: .5; border: 0; }
+    a { color: inherit; opacity: .6; }
+  </style>
+</head>
+<body>
+  <h1>async search</h1>
+  <team-search></team-search>
+  <p><a href="/examples/">← All examples</a></p>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

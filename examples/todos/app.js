@@ -1,4 +1,4 @@
-import { html, AurilElement, Store } from '../src/index.js';
+import { html, AurilElement, Store } from '../../src/index.js';
 
 /** @typedef {{ id: number, text: string, done: boolean }} Todo */
 /** @typedef {'all' | 'active' | 'done'} Filter */
@@ -6,6 +6,7 @@ import { html, AurilElement, Store } from '../src/index.js';
 const store = new Store(
   {
     filter: /** @type {Filter} */ ('all'),
+    query: '',
     todos: /** @type {Todo[]} */ ([
       { id: 1, text: 'Try editing me (double-click)', done: false },
       { id: 2, text: 'Notice focus surviving re-renders', done: false },
@@ -39,6 +40,16 @@ class TodoApp extends AurilElement {
         todos: [...s.todos, { id: Math.max(0, ...s.todos.map((t) => t.id)) + 1, text, done: false }],
       }));
       input.value = '';
+    });
+
+    // Search-as-you-type: every keystroke patches the store, which re-morphs
+    // this whole component. Safe because (a) the value is bound in render()
+    // (`value="${query}"`), so the input survives re-renders while blurred,
+    // and (b) morph never overwrites the *focused* element's value
+    // (ignoreActiveValue), so typing — including async updates landing
+    // mid-keystroke — never loses characters or the cursor.
+    this.delegate('input', '.search', (_, el) => {
+      store.set({ query: /** @type {HTMLInputElement} */ (el).value });
     });
 
     this.delegate('change', '.toggle', (_, el) => {
@@ -112,12 +123,15 @@ class TodoApp extends AurilElement {
   }
 
   render() {
-    const { todos, filter } = store.state;
-    const visible = todos.filter((t) => (filter === 'active' ? !t.done : filter === 'done' ? t.done : true));
+    const { todos, filter, query } = store.state;
+    const visible = todos
+      .filter((t) => (filter === 'active' ? !t.done : filter === 'done' ? t.done : true))
+      .filter((t) => t.text.toLowerCase().includes(query.toLowerCase()));
     const doneCount = todos.filter((t) => t.done).length;
     return html`
       <h1>todos</h1>
       <form><input class="new-todo" placeholder="What needs to be done?" autocomplete="off" autofocus></form>
+      <input class="search" type="search" value="${query}" placeholder="Search…" autocomplete="off">
       <ul class="todo-list">${visible.map((t) => this.#row(t))}</ul>
       ${todos.length > 0 && html`
         <footer>

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>auril.js — animation</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: system-ui, sans-serif; max-width: 30rem; margin: 3rem auto; padding: 0 1rem; }
+    h1 { font-weight: 200; font-size: 2.5rem; opacity: .5; margin: 0 0 1rem; }
+    /* user-select: none — double-clicking Add would otherwise select the
+       button label, flashing a text-selection highlight on rapid clicks */
+    .controls { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; user-select: none; }
+    .controls button {
+      font: inherit; cursor: pointer; padding: .3rem .8rem;
+      border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+      border-radius: .4rem; background: none; color: inherit;
+    }
+    .controls span { opacity: .55; font-size: .85rem; }
+    .grid { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: .6rem; }
+    .card {
+      aspect-ratio: 1; display: grid; place-items: center; cursor: pointer;
+      font-size: 1.4rem; border-radius: .5rem; color: #fff;
+      background: oklch(0.65 0.15 var(--h));
+    }
+    ::view-transition-group(*) { animation-duration: .35s; }
+    a { color: inherit; opacity: .6; }
+  </style>
+</head>
+<body>
+  <h1>animation</h1>
+  <shuffle-grid></shuffle-grid>
+  <p><a href="/examples/">← All examples</a></p>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

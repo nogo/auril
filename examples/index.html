@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>auril.js examples</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 34rem;
+      margin: 3rem auto;
+      padding: 0 1rem;
+    }
+    h1 { font-weight: 200; font-size: 2.5rem; margin: 0 0 .25rem; opacity: .5; }
+    .demos { list-style: none; padding: 0; display: grid; gap: .6rem; }
+    .demos a {
+      display: block; padding: .8rem 1rem; border-radius: .5rem;
+      border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+      text-decoration: none; color: inherit;
+    }
+    .demos a:hover { border-color: color-mix(in srgb, currentColor 45%, transparent); }
+    .demos strong { display: block; }
+    .demos small { opacity: .6; }
+    [popover] {
+      max-width: 26rem; padding: 1rem 1.2rem; border-radius: .5rem;
+      border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+    }
+    .about-btn { font: inherit; background: none; border: 0; color: inherit;
+      text-decoration: underline; cursor: pointer; padding: 0; opacity: .7; }
+  </style>
+</head>
+<body>
+  <h1>auril.js examples</h1>
+  <p>
+    Each demo is a few dozen lines of plain ES modules — no build step.
+    <button class="about-btn" popovertarget="about">What is this?</button>
+  </p>
+  <!-- This "modal" is the platform-first principle in action: a native
+       popover, zero JavaScript. -->
+  <div id="about" popover>
+    <strong>auril.js</strong> is a no-build frontend kernel for personal apps:
+    escaped <code>html``</code> templates, DOM morphing, custom elements, one
+    store, a Navigation-API router — 430 lines you own. This popover needs no
+    JS at all: <code>popovertarget</code> is enough.
+  </div>
+  <ul class="demos">
+    <li><a href="/examples/todos/">
+      <strong>Todos</strong>
+      <small>The canonical app: CRUD, inline editing, filters, search-as-you-type, persistence — every kernel piece.</small>
+    </a></li>
+    <li><a href="/examples/counter/">
+      <strong>Counter</strong>
+      <small>The smallest possible app: one store, one component, persisted across reloads.</small>
+    </a></li>
+    <li><a href="/examples/fetch/">
+      <strong>Async search</strong>
+      <small>Loading / error / retry states, request cancellation, and the api.js seam — all component-local state.</small>
+    </a></li>
+    <li><a href="/examples/router/">
+      <strong>Router</strong>
+      <small>Navigation-API routing with params, deep links, back/forward, and view transitions between views.</small>
+    </a></li>
+    <li><a href="/examples/animation/">
+      <strong>Animation</strong>
+      <small>List shuffle/sort/add/remove animated by View Transitions — CSS pairs the cards, morph moves them.</small>
+    </a></li>
+    <li><a href="/examples/dbmonster/">
+      <strong>DBMonster</strong>
+      <small>The classic repaint stress test: full table re-render + morph every animation frame, with FPS counter.</small>
+    </a></li>
+  </ul>
+</body>
+</html>

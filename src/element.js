@@ -21,10 +21,14 @@ export class AurilElement extends HTMLElement {
   _ac;
   /** @type {AbortSignal | undefined} */
   signal;
+  /** @type {string | undefined} */
+  #lastHtml;
 
   connectedCallback() {
     this._ac = new AbortController();
     this.signal = this._ac.signal;
+    this.#lastHtml = undefined; // DOM may have changed while detached — morph fresh
+
     const self = /** @type {AurilElement & Hooks} */ (this);
     self.onConnect?.();
     if (self.render) this.update();
@@ -108,13 +112,20 @@ export class AurilElement extends HTMLElement {
     this.signal.addEventListener('abort', unsub, { once: true });
   }
 
-  /** Morph the live DOM to match render(). Preserves focus, selection, scroll. */
+  /**
+   * Morph the live DOM to match render(). Preserves focus, selection, scroll.
+   * Skipped entirely when render() output is unchanged since the last update,
+   * so coarse watch() subscriptions stay cheap.
+   */
   update() {
     const self = /** @type {AurilElement & Hooks} */ (this);
     if (!self.render) return;
     try {
+      const next = String(self.render());
+      if (next === this.#lastHtml) return dev.log('update', this.localName, '(unchanged, skipped)');
       dev.log('update', this.localName);
-      morph(this, self.render());
+      morph(this, next);
+      this.#lastHtml = next;
     } catch (err) {
       console.error(`[auril] render failed in <${this.localName}>`, err);
       throw err;

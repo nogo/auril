@@ -17,7 +17,7 @@ bloat it was built to escape.
 1. **Two-app rule.** Nothing enters the kernel until at least **two** apps
    need it *today*. Until then it lives in the app that wants it.
 2. **Hard size budget: 600 lines** for the kernel (top-level `src/*.js`,
-   excluding `src/vendor/`, `test/`, `example/` — check: `wc -l src/*.js`).
+   excluding `src/vendor/`, `test/`, `examples/` — check: `wc -l src/*.js`).
    To cross it, delete something first. No subfolders inside `src/` — that
    is how creep starts.
 3. **Near-frozen.** Bug fixes are always welcome. Features must pass the
@@ -72,7 +72,12 @@ input in `raw()`.
 
 Morphs `target`'s children to match an HTML string (Idiomorph,
 `morphStyle: 'innerHTML'`). Non-destructive: preserves focus, selection,
-scroll, and node identity. Two rules:
+scroll, and node identity. The **focused element's value is never
+overwritten** (`ignoreActiveValue: true` by default): re-rendering on every
+keystroke can't wipe text, jump the cursor, or break IME composition; the
+value resyncs from markup once the input blurs. Pass
+`ignoreActiveValue: false` if you must programmatically set a focused
+input's value through a morph. Two rules:
 
 - Give list items **stable `id` attributes** (`id="tx-42"`) so reorders pair
   nodes correctly.
@@ -107,7 +112,11 @@ customElements.define('monthly-list', MonthlyList);
   slice changes (`===` comparison). For re-render-on-slice:
   `this.watch((s) => s.yearMonth, () => this.update())`.
 - `this.update()` — `morph(this, this.render())`; logs the failing tag name
-  on render errors.
+  on render errors. **Memoized**: when render() output is string-identical to
+  the previous update, the morph is skipped entirely — coarse `watch()`
+  subscriptions cost one string compare, not a tree walk. The memo resets on
+  reconnect. Corollary: don't mutate a component's DOM outside render();
+  a skipped morph won't repair it.
 - `on()`, `delegate()`, and `watch()` throw when called before connect — call
   them from `onConnect()`, never the constructor.
 
@@ -136,6 +145,12 @@ stays flat, so existing apps keep their stored data.
 Persisted slices also sync **across tabs**: a `storage` event from another tab
 re-applies the saved keys (last write wins; non-persisted keys untouched), so
 two open tabs stay in step.
+
+Design constraint: the public API (`state` getter, `set`, `subscribe`,
+microtask-batched notify) is kept swappable to a future native-signals backend
+(TC39 Signals, currently Stage 1). Don't add store API surface a
+`Signal.State`-based implementation couldn't honor — e.g. no synchronous
+notification guarantees.
 
 ### router.js — `Router`
 
@@ -194,6 +209,14 @@ state: `__auril['auril-todos'].state`. Enable with `?auril-dev` in the URL or
   re-binds and stacks listeners on every reconnect.
 - Modals, menus, tooltips: `<dialog>` and `popover` — zero kernel code.
 - Forms: native validation (`required`, `:user-invalid`) before JS.
+- **Controlled inputs** — the canonical form for inputs that write to the
+  store on keystroke (search boxes, live filters): bind the value in markup —
+  `value="${s.query}"` — and update via
+  `this.delegate('input', '.search', (_, el) => store.set({ query: el.value }))`.
+  The binding keeps the input correct across re-renders while blurred;
+  `ignoreActiveValue` keeps typing safe while focused. An *unbound* input in
+  a re-rendering region is a bug: morph clears its value on the next render
+  after blur.
 
 ## Vendoring into an app
 
@@ -243,7 +266,14 @@ extension highlight and format the template literals (editor-dependent).
 Reference this file in the app's CLAUDE.md (or paste it at session start) —
 it is the framework's entire context, ~2k tokens. The implementation is small
 enough that the model should **read the kernel files directly** instead of
-guessing: everything is within a few hundred lines. `example/app.js` is the
+guessing: everything is within a few hundred lines. `examples/todos/app.js` is the
 canonical usage reference — a complete todo app (CRUD, inline editing,
-filters, persistence) showing every kernel piece and the local-state
-convention in ~150 lines.
+filters, persistence, search-as-you-type) showing every kernel piece and the
+local-state convention in ~170 lines.
+
+## Versions
+
+- **Idiomorph (vendored)**: v0.7.4 (`src/idiomorph.js` at tag v0.7.4,
+  2025-09-29, Zero-Clause BSD). Only local change: trailing
+  `export {Idiomorph};`. Upgrade by replacing the file from the tag and
+  re-appending the export.

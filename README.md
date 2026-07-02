@@ -40,7 +40,9 @@ in the app.
 - **Small by rule.** Kernel code has a hard 600-line budget for top-level
   `src/*.js`.
 
-See [FRAMEWORK.md](./FRAMEWORK.md) for the full contract.
+See [FRAMEWORK.md](./FRAMEWORK.md) for the full contract, and
+[ALTERNATIVES.md](./ALTERNATIVES.md) for the researched landscape of
+alternative tiny-kernel approaches (why string+morph, and when to revisit).
 
 ## Quick Start
 
@@ -54,13 +56,13 @@ bun serve.js
 Then open:
 
 ```text
-http://localhost:8000/example/
+http://localhost:8000/examples/    demo gallery — todos, counter, async, router, animation, dbmonster
 ```
 
 Enable debug logging with:
 
 ```text
-http://localhost:8000/example/?auril-dev
+http://localhost:8000/examples/todos/?auril-dev
 ```
 
 No Bun? Any static server works, e.g. `python3 -m http.server` — but it has no
@@ -124,6 +126,10 @@ an injection vector escaping cannot close.
 
 `morph(target, content, options?)` updates a target element's children to match
 an HTML string while preserving focus, selection, scroll, and node identity.
+The focused element's value is never overwritten (`ignoreActiveValue`), so an
+input that triggers a re-render on every keystroke keeps its text, cursor, and
+IME composition; the value resyncs from markup on blur. Bind such inputs in
+markup (`value="${s.query}"`) so they also stay correct while not focused.
 
 Give repeated items stable `id` attributes so reorders pair the right nodes:
 
@@ -158,7 +164,8 @@ Useful methods:
 - `this.watch(cb)` calls `cb(state)` on any store change.
 - `this.watch(selector, cb)` calls `cb(slice, state)` only when the selected
   slice changes by `===`.
-- `this.update()` morphs the element to match `render()`.
+- `this.update()` morphs the element to match `render()` — skipped when the
+  rendered string is unchanged, so broad `watch()` subscriptions stay cheap.
 
 Component-local state should live in private fields:
 
@@ -303,7 +310,7 @@ src/
   dev.js         opt-in debug logging
   index.js       public exports
   vendor/        pinned third-party code
-example/         complete todo app
+examples/        demo gallery (todos, counter, async, router, animation, dbmonster); examples/todos/ is the canonical usage reference
 test/            bun tests
 FRAMEWORK.md     compact canonical framework contract
 vendor.sh        copy kernel into an app

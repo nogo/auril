@@ -13,7 +13,7 @@
       padding: 0 1rem;
     }
     h1 { font-weight: 200; font-size: 3rem; text-align: center; margin: 0 0 1rem; opacity: .4; }
-    .new-todo, .edit {
+    .new-todo, .search, .edit {
       width: 100%;
       box-sizing: border-box;
       font: inherit;
@@ -23,6 +23,7 @@
       background: transparent;
       color: inherit;
     }
+    .search { margin-top: .5rem; }
     .todo-list { padding: 0; margin: 1rem 0; }
     .todo-list li {
       list-style: none;
@@ -55,7 +56,7 @@
   <todo-app></todo-app>
   <todo-stats></todo-stats>
   <!-- No build step. Serve the repo root, e.g. `bun serve.js` (live reload) or
-       `python3 -m http.server`, then open /example/. Add ?auril-dev to the URL
+       `python3 -m http.server`, then open /examples/todos/. Add ?auril-dev to the URL
        for store/route logging. -->
   <script type="module" src="./app.js"></script>
 </body>

@@ -1,4 +1,11 @@
 /**
+ * Idiomorph v0.7.4 — https://github.com/bigskysoftware/idiomorph
+ * Vendored verbatim from src/idiomorph.js at tag v0.7.4 (2025-09-29);
+ * only local change: the trailing `export {Idiomorph};` (ESM export).
+ * License: Zero-Clause BSD.
+ */
+
+/**
  * @typedef {object} ConfigHead
  *
  * @property {'merge' | 'append' | 'morph' | 'none'} [style]

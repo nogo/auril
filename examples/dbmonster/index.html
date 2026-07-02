@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>auril.js — dbmonster</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: system-ui, sans-serif; max-width: 44rem; margin: 2rem auto; padding: 0 1rem; }
+    h1 { font-weight: 200; font-size: 2.5rem; opacity: .5; margin: 0 0 .5rem; }
+    .controls { display: flex; align-items: center; gap: .5rem; }
+    .controls button {
+      font: inherit; cursor: pointer; padding: .25rem .7rem;
+      border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+      border-radius: .4rem; background: none; color: inherit;
+    }
+    .controls button[aria-pressed="true"] { border-color: currentColor; }
+    .fps { margin-left: auto; font-variant-numeric: tabular-nums; }
+    table { width: 100%; border-collapse: collapse; font-size: .8rem; font-variant-numeric: tabular-nums; }
+    td { padding: .25rem .4rem; border-bottom: 1px solid color-mix(in srgb, currentColor 10%, transparent); }
+    .name { opacity: .75; white-space: nowrap; }
+    .count { display: inline-block; min-width: 1.6rem; text-align: center; border-radius: .3rem; color: #fff; padding: .1rem 0; }
+    .count.green { background: #2f8a4c; } .count.orange { background: #c07f00; } .count.red { background: #b33; }
+    .q { position: relative; cursor: default; }
+    .q.orange { color: #c07f00; } .q.red { color: #b33; }
+    .q .popover { display: none; position: absolute; z-index: 1; left: 0; bottom: 100%;
+      padding: .3rem .5rem; border-radius: .3rem; white-space: nowrap;
+      background: color-mix(in srgb, currentColor 90%, transparent); color: Canvas; }
+    .q:hover .popover { display: block; }
+    .note { opacity: .55; font-size: .8rem; max-width: 38rem; }
+    a { color: inherit; opacity: .6; }
+  </style>
+</head>
+<body>
+  <h1>dbmonster</h1>
+  <db-monster></db-monster>
+  <p class="note">Every frame builds a fresh HTML string and Idiomorph parses
+    it into a throwaway tree — deliberate worst-case allocation churn. Chrome's
+    generational GC holds 60 fps; Firefox's incremental cycle collector shows
+    periodic dips. Real apps update on events, not every frame — see
+    ALTERNATIVES.md for the measured analysis.</p>
+  <p><a href="/examples/">← All examples</a></p>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

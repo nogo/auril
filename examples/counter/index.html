@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>auril.js — counter</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: system-ui, sans-serif; max-width: 30rem; margin: 3rem auto; padding: 0 1rem; }
+    h1 { font-weight: 200; font-size: 2.5rem; opacity: .5; margin: 0 0 1rem; }
+    counter-app { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+    counter-app button {
+      font: inherit; font-size: 1.2rem; width: 2.4rem; height: 2.4rem; cursor: pointer;
+      border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+      border-radius: .4rem; background: none; color: inherit;
+    }
+    counter-app button:disabled { opacity: .3; cursor: default; }
+    counter-app .reset { width: auto; padding: 0 .8rem; font-size: 1rem; }
+    counter-app output { font-size: 2rem; min-width: 3rem; text-align: center; font-variant-numeric: tabular-nums; }
+    counter-app p { width: 100%; opacity: .55; font-size: .85rem; }
+    a { color: inherit; opacity: .6; }
+  </style>
+</head>
+<body>
+  <h1>counter</h1>
+  <counter-app></counter-app>
+  <p><a href="/examples/">← All examples</a></p>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
