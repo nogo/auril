@@ -82,5 +82,30 @@ export async function measure(step, { samples, warmup, targetMs }) {
   return { ...result, batch };
 }
 
+/**
+ * Time one operation per sample, with per-iteration setup excluded.
+ *
+ * For operations expensive enough that batching is unnecessary — comfortably
+ * above the 100 µs clamp — and whose input the operation *consumes*: Idiomorph
+ * moves nodes out of the content it is handed, so measuring the pre-parsed path
+ * needs a fresh tree per run and the clone that produces it must not be timed.
+ * @param {(i: number) => any} setup untimed; its return value is passed to step
+ * @param {(prepared: any, i: number) => unknown} step
+ * @param {{ samples: number, warmup: number }} opts
+ */
+export async function measureEach(setup, step, { samples, warmup }) {
+  /** @type {number[]} */
+  const out = [];
+  for (let i = 0; i < warmup + samples; i++) {
+    const prepared = setup(i);
+    const started = performance.now();
+    const result = step(prepared, i);
+    if (result instanceof Promise) await result;
+    const elapsed = performance.now() - started;
+    if (i >= warmup) out.push(elapsed);
+  }
+  return { ...stats(out), batch: 1 };
+}
+
 /** @param {number} ms */
 export const ms = (ms) => ms.toFixed(3);

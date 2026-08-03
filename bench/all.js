@@ -3,6 +3,7 @@
 // go through here, so adding a scenario means touching one file.
 
 import { runTree } from './tree.js';
+import { runSplit } from './split.js';
 import { runFanout } from './fanout.js';
 
 /**
@@ -11,6 +12,7 @@ import { runFanout } from './fanout.js';
 export async function runAll({ samples = 40, warmup = 10 } = {}) {
   const blocks = [];
   blocks.push(...(await runTree({ samples, warmup })));
+  blocks.push(await runSplit({ samples, warmup }));
   blocks.push(await runFanout({ samples, warmup }));
   return { samples, warmup, userAgent: navigator.userAgent, blocks };
 }

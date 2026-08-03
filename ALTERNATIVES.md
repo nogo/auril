@@ -68,9 +68,11 @@ UI), Mavo/Strawberry (**?** likely inactive). Cami.js is a conceptual sibling
 ## Shortlist — actually worth evaluating
 
 1. **uhtml** — best paradigm match. True keyed template parts at ~2.5 KB
-   would *delete* the morph layer and the whole focus/input problem class.
-   Trade-off: single maintainer; morphing arbitrary HTML strings (e.g.
-   server-rendered fragments) is lost.
+   would *delete* the morph layer and the whole focus/input problem class, and
+   per scenario 4 would target the 86–90 % of morph that is tree walking — the
+   largest measured win available. Trade-off: single maintainer; morphing
+   arbitrary HTML strings (e.g. server-rendered fragments) is lost, as is
+   Idiomorph's opportunistic `moveBefore()`.
 2. **lit-html standalone** — same argument, maximum battle-testing; costs 3×
    the size and awkward vendoring (pre-bundled ESM needed).
 3. **Status quo (Idiomorph 0.7.4 + `ignoreActiveValue`)** — the null
@@ -119,12 +121,28 @@ toward the two-instance revisit trigger below.
 ## Quantified: the same cost, measured (2026-08)
 
 [PERFORMANCE.md](./PERFORMANCE.md) replaces the dbmonster eyeball test with
-`bench/` — three scenarios in a throttled Chrome, committed numbers. The
-headline for *this* file: morph costs **5–7× `innerHTML`** and its cost tracks
-**tree size, not change size** (a one-row change costs 84–91 % of changing every
-row), while building the HTML string is only 2–3 % of an update. In other words
-the parse-and-walk is the whole bill, and template parts are precisely what
-would remove it.
+`bench/` — four scenarios in a throttled Chrome, committed numbers. The headline
+for *this* file: morph costs **5–7× `innerHTML`** and its cost tracks **tree
+size, not change size** (a one-row change costs 84–97 % of changing every row),
+while building the HTML string is only 2–3 % of an update.
+
+Scenario 4 splits morph itself: **the tree walk is 86–90 %, the HTML parse only
+10–14 %.** Two consequences for the choices in this file, and they point in
+opposite directions:
+
+- **A parse-only fix is not worth waiting for.** A template-caching Idiomorph,
+  or changing `morph()` to accept pre-parsed nodes, recovers ~14 %. Strike it
+  from consideration.
+- **The case for template parts is *stronger* than the parse figure suggests.**
+  uhtml and lit-html do not merely parse once — they update bindings directly
+  and never walk the tree. That targets the 86–90 %, not the 14 %. If this fork
+  is ever taken, the expected win is most of the morph cost, not a slice of it.
+
+One caveat, so the two measurements are not read as conflicting: scenario 4
+measures **time**, and the Firefox finding above is about **allocation**. A 14 %
+time cost can still be the dominant source of garbage, because the whole parsed
+tree is discarded every update. Nothing here contradicts the dbmonster
+observation, and nothing here measures it.
 
 This is **not** a second instance of morph-model pain. It measures the same
 phenomenon the dbmonster run surfaced, more precisely; it does not surface a new

@@ -2,6 +2,15 @@
 // Every animation frame mutates the data and re-renders the whole table
 // through render() + morph — no keyed tricks, no partial updates. The FPS
 // counter shows what the string+morph pipeline sustains.
+//
+// NOT A PATTERN TO COPY. This deliberately breaks the ~250-node per-component
+// ceiling in FRAMEWORK.md Conventions: at roughly 35 nodes per row it renders on
+// the order of 1,500 nodes from a single component at the default 40 rows, and
+// about double that at 80. Being over the ceiling is the point of a stress test.
+// Morph cost tracks tree size, not change size (PERFORMANCE.md), so expect 60fps
+// on a desktop and well short of it on a mid-range phone. A real view this large
+// belongs in several components with watch(selector, cb), so that each morph
+// walks a small tree and untouched slices never morph at all.
 import { html, AurilElement } from '../../src/index.js';
 
 const QUERIES = [

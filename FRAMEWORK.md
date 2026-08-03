@@ -239,6 +239,8 @@ state: `__auril['auril-todos'].state`. Enable with `?auril-dev` in the URL or
   Split a large view into several components with `watch(selector, cb)`: each
   morph then walks a small tree, and the ones whose slice did not change never
   morph at all. This is the reason the fan-out tax is worth paying.
+  `examples/dbmonster/` breaks this rule on purpose — it is a stress test, and
+  it says so; every other example stays under the ceiling.
 - `raw()` only at trusted edges (markdown renderer output) — never user input.
 - **Always quote interpolated attribute _values_**: `class="${x}"`, not
   `class=${x}`. `` html`` `` escapes `&<>"'` but not spaces or `=`, so an
@@ -346,9 +348,10 @@ The four measured results that constrain how components are written:
 1. `render()` is **2–3 % of an update**. `update()`'s string memo skips the
    *morph*, not the render — never weaken it, never optimise `render()`.
 2. **Morph cost tracks tree size, not change size** — a one-row change costs
-   84–91 % of changing every row. This is the basis for the ~250-node ceiling
-   in Conventions, and it invalidates any "the change is small so the morph is
-   cheap" argument.
+   84–97 % of changing every row, and **86–90 % of morph is the tree walk**, not
+   the HTML parse. Together these are the basis for the ~250-node ceiling in
+   Conventions: the walk runs in full regardless, so the only lever is a smaller
+   tree. Any "the change is small so the morph is cheap" argument is invalid.
 3. Morph costs **5–7× `innerHTML`**, which is the price of keeping node identity
    and focus — `innerHTML` measurably loses both. Not a reason to switch.
 4. The fan-out tax is **~1.4 µs per idle subscribed component**. Negligible;

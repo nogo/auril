@@ -18,9 +18,10 @@ import { html, morph } from '../src/index.js';
 import { measure, ms } from './lib.js';
 
 const CELLS = 5;
-const SIZES = [50, 200];
+/** Exported so bench/split.js measures the identical tree — the numbers have to be comparable. */
+export const SIZES = [50, 200];
 /** Distinct payloads cycled through, so no run repeats the same string twice. */
-const VARIANTS = 8;
+export const VARIANTS = 8;
 
 /** Kept live so the render-only step cannot be optimised away. */
 let sink = '';
@@ -35,7 +36,7 @@ let sink = '';
  * @param {number} version
  * @param {'wide' | 'narrow'} churn
  */
-function markup(rows, version, churn) {
+export function markup(rows, version, churn) {
   const items = [];
   for (let r = 0; r < rows; r++) {
     const bump = churn === 'wide' || r === 0 ? version : 0;
