@@ -1,0 +1,308 @@
+{
+  "samples": 40,
+  "warmup": 10,
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/150.0.0.0 Safari/537.36",
+  "blocks": [
+    {
+      "name": "wide",
+      "title": "Scenario 1 — wide update (every row changes)",
+      "note": "p50 ms per operation. render builds the string; morph and innerHTML each apply the same string.",
+      "columns": [
+        "rows",
+        "nodes",
+        "render",
+        "morph",
+        "innerHTML",
+        "morph ÷ innerHTML"
+      ],
+      "rows": [
+        [
+          "50",
+          "250",
+          "0.105",
+          "6.200",
+          "1.100",
+          "5.6×"
+        ],
+        [
+          "200",
+          "1000",
+          "0.475",
+          "31.900",
+          "4.800",
+          "6.6×"
+        ]
+      ],
+      "verdict": {
+        "label": "250 nodes (the documented per-component ceiling), render + morph ≤ 16 ms — actual 6.305 ms",
+        "pass": true,
+        "hard": true
+      },
+      "raw": {
+        "churn": "wide",
+        "sizes": [
+          {
+            "rows": 50,
+            "cells": 250,
+            "render": {
+              "p50": 0.10499999970197678,
+              "p95": 0.14749999940395356,
+              "mean": 0.085,
+              "n": 40,
+              "batch": 40
+            },
+            "morph": {
+              "p50": 6.199999988079071,
+              "p95": 8,
+              "mean": 6.45,
+              "n": 40,
+              "batch": 1
+            },
+            "innerHTML": {
+              "p50": 1.1000000089406967,
+              "p95": 1.449999988079071,
+              "mean": 1.1337499998509883,
+              "n": 40,
+              "batch": 2
+            }
+          },
+          {
+            "rows": 200,
+            "cells": 1000,
+            "render": {
+              "p50": 0.4750000014901161,
+              "p95": 0.6999999955296516,
+              "mean": 0.4768750000745058,
+              "n": 40,
+              "batch": 4
+            },
+            "morph": {
+              "p50": 31.899999976158142,
+              "p95": 37.099999994039536,
+              "mean": 32.06749999970198,
+              "n": 40,
+              "batch": 1
+            },
+            "innerHTML": {
+              "p50": 4.799999982118607,
+              "p95": 7.9000000059604645,
+              "mean": 5.120000000298023,
+              "n": 40,
+              "batch": 1
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "narrow",
+      "title": "Scenario 2 — narrow update (one row of N changes)",
+      "note": "p50 ms per operation. After one update — morph: node kept, focus kept; innerHTML: node lost, focus lost.",
+      "columns": [
+        "rows",
+        "nodes",
+        "render",
+        "morph",
+        "innerHTML",
+        "morph ÷ innerHTML"
+      ],
+      "rows": [
+        [
+          "50",
+          "250",
+          "0.115",
+          "5.100",
+          "1.067",
+          "4.8×"
+        ],
+        [
+          "200",
+          "1000",
+          "0.433",
+          "26.800",
+          "3.800",
+          "7.1×"
+        ]
+      ],
+      "verdict": {
+        "label": "morph costs 7.1× innerHTML at 1000 nodes, and only 84% of its own wide-update cost — morph time tracks tree size, not change size",
+        "pass": true,
+        "hard": false
+      },
+      "raw": {
+        "churn": "narrow",
+        "sizes": [
+          {
+            "rows": 50,
+            "cells": 250,
+            "render": {
+              "p50": 0.11499999910593033,
+              "p95": 0.14000000059604645,
+              "mean": 0.110625,
+              "n": 40,
+              "batch": 20
+            },
+            "morph": {
+              "p50": 5.100000023841858,
+              "p95": 5.800000011920929,
+              "mean": 5.132499999552965,
+              "n": 40,
+              "batch": 1
+            },
+            "innerHTML": {
+              "p50": 1.0666666626930237,
+              "p95": 1.7333333293596904,
+              "mean": 1.1650000000993412,
+              "n": 40,
+              "batch": 3
+            }
+          },
+          {
+            "rows": 200,
+            "cells": 1000,
+            "render": {
+              "p50": 0.4333333373069763,
+              "p95": 0.6999999980131785,
+              "mean": 0.4583333333333333,
+              "n": 40,
+              "batch": 3
+            },
+            "morph": {
+              "p50": 26.80000001192093,
+              "p95": 31.19999998807907,
+              "mean": 27.43500000014901,
+              "n": 40,
+              "batch": 1
+            },
+            "innerHTML": {
+              "p50": 3.800000011920929,
+              "p95": 4.300000011920929,
+              "mean": 3.8200000002980232,
+              "n": 40,
+              "batch": 1
+            }
+          }
+        ],
+        "preservation": {
+          "morph": {
+            "sameNode": true,
+            "keepsFocus": true
+          },
+          "innerHTML": {
+            "sameNode": false,
+            "keepsFocus": false
+          }
+        }
+      }
+    },
+    {
+      "name": "fanout",
+      "title": "Scenario 3 — fan-out (one patch, N subscribed components)",
+      "note": "Per-patch ms. broad = this.watch(); scoped = this.watch(selector, cb).",
+      "columns": [
+        "components",
+        "broad p50",
+        "broad p95",
+        "scoped p50",
+        "scoped p95",
+        "tax / idle"
+      ],
+      "rows": [
+        [
+          "10",
+          "0.140",
+          "0.200",
+          "0.120",
+          "0.160",
+          "2.2 µs"
+        ],
+        [
+          "50",
+          "0.181",
+          "0.281",
+          "0.129",
+          "0.176",
+          "1.1 µs"
+        ],
+        [
+          "200",
+          "0.400",
+          "0.680",
+          "0.129",
+          "0.143",
+          "1.4 µs"
+        ]
+      ],
+      "verdict": {
+        "label": "50 components, broad p95 ≤ 8 ms (actual 0.281 ms)",
+        "pass": true,
+        "hard": true
+      },
+      "raw": {
+        "sizes": [
+          {
+            "count": 10,
+            "broad": {
+              "p50": 0.14000000357627868,
+              "p95": 0.2,
+              "mean": 0.14450000002980234,
+              "n": 40,
+              "batch": 5
+            },
+            "scoped": {
+              "p50": 0.12000000029802323,
+              "p95": 0.1600000001490116,
+              "mean": 0.12743749998509885,
+              "n": 40,
+              "batch": 40
+            },
+            "taxPerIdleComponentUs": 2.2222225864728276
+          },
+          {
+            "count": 50,
+            "broad": {
+              "p50": 0.18095238152004423,
+              "p95": 0.2809523812362126,
+              "mean": 0.23452380952380958,
+              "n": 40,
+              "batch": 21
+            },
+            "scoped": {
+              "p50": 0.1285714294229235,
+              "p95": 0.1761904756228129,
+              "mean": 0.13773809525938263,
+              "n": 40,
+              "batch": 21
+            },
+            "taxPerIdleComponentUs": 1.0689990223902193
+          },
+          {
+            "count": 200,
+            "broad": {
+              "p50": 0.4,
+              "p95": 0.6800000011920929,
+              "mean": 0.4329999999701976,
+              "n": 40,
+              "batch": 5
+            },
+            "scoped": {
+              "p50": 0.1285714294229235,
+              "p95": 0.14285714285714285,
+              "mean": 0.12785714286423872,
+              "n": 40,
+              "batch": 21
+            },
+            "taxPerIdleComponentUs": 1.363962666216465
+          }
+        ],
+        "budget": {
+          "count": 50,
+          "maxP95Ms": 8
+        }
+      }
+    }
+  ],
+  "chrome": "150.0.7871.187",
+  "throttle": 4,
+  "recordedAt": "2026-08-03T08:10:35.444Z"
+}

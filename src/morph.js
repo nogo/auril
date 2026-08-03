@@ -10,8 +10,8 @@ import { Idiomorph } from './vendor/idiomorph.js';
  * Exempt nodes (e.g. contenteditable) via options.callbacks.beforeNodeMorphed.
  * @param {Element} target
  * @param {unknown} content
- * @param {Record<string, unknown>} [options]
+ * @param {import('./vendor/idiomorph.js').IdiomorphConfig} [options]
  */
 export function morph(target, content, options = {}) {
-  /** @type {any} */ (Idiomorph).morph(target, String(content), { morphStyle: 'innerHTML', ignoreActiveValue: true, ...options });
+  Idiomorph.morph(target, String(content), { morphStyle: 'innerHTML', ignoreActiveValue: true, ...options });
 }

@@ -10,7 +10,7 @@ const NOTES = [
   { id: 1, title: 'Navigation API', body: 'One `navigate` listener intercepts link clicks, back/forward, and go(). No click hijacking, no popstate juggling.' },
   { id: 2, title: 'URLPattern', body: 'Routes use :param and * syntax natively — the pattern matching ships with the browser, not with the kernel.' },
   { id: 3, title: 'Deep links', body: 'Refresh this page: the server serves the app shell, and start() resolves the current URL to this view.' },
-  { id: 4, title: 'View Transitions', body: 'Each route change is wrapped in document.startViewTransition when supported. The cross-fade you just saw costs the kernel 2 lines.' },
+  { id: 4, title: 'View Transitions', body: 'Each intercepted route change is wrapped in document.startViewTransition when supported (the initial resolve is not — it would cross-fade from a blank page). Handlers get the destination URL, so query state comes off url.searchParams.' },
 ];
 
 /** @typedef {{ name: 'list' } | { name: 'note', id: number } | { name: 'missing', path: string }} View */
@@ -23,7 +23,7 @@ const router = new Router()
   .route(`${BASE}/note/:id`, ({ id }) => store.set({ view: { name: 'note', id: Number(id) } }))
   // Scoped catch-all: only paths under this demo show the missing view.
   // Links elsewhere (e.g. back to /examples/) fall through to the browser.
-  .route(`${BASE}/*`, (_, path) => store.set({ view: { name: 'missing', path } }))
+  .route(`${BASE}/*`, (_, url) => store.set({ view: { name: 'missing', path: url.pathname } }))
   .start();
 
 class NotesApp extends AurilElement {

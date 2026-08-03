@@ -138,3 +138,54 @@ test('unversioned persist writes a flat payload', async () => {
     delete (/** @type {any} */ (globalThis)).localStorage;
   }
 });
+
+/** @param {string} key @param {unknown} payload */
+const fireStorage = (key, payload) =>
+  globalThis.dispatchEvent(new StorageEvent('storage', { key, newValue: JSON.stringify(payload) }));
+
+test('cross-tab sync applies changed persisted keys and leaves the rest alone', async () => {
+  setLocalStorage(memStorage());
+  const s = new Store({ n: 0, local: 'x' }, { persist: ['n'], key: 'tab-test' });
+  try {
+    let calls = 0;
+    s.subscribe(() => calls++);
+    fireStorage('tab-test', { n: 9 });
+    await tick();
+    expect(s.state.n).toBe(9);
+    expect(s.state.local).toBe('x'); // non-persisted key untouched
+    expect(calls).toBe(1);
+  } finally {
+    s.destroy();
+    delete (/** @type {any} */ (globalThis)).localStorage;
+  }
+});
+
+test('cross-tab sync ignores a payload equal to current state', async () => {
+  setLocalStorage(memStorage());
+  const s = new Store({ todos: [{ id: 1 }] }, { persist: ['todos'], key: 'echo-test' });
+  try {
+    let calls = 0;
+    s.subscribe(() => calls++);
+    // Deep-equal but freshly parsed: a reference check would patch here, write
+    // back to storage, and bounce the change to the tab that sent it.
+    fireStorage('echo-test', { todos: [{ id: 1 }] });
+    await tick();
+    expect(calls).toBe(0);
+  } finally {
+    s.destroy();
+    delete (/** @type {any} */ (globalThis)).localStorage;
+  }
+});
+
+test('destroy() detaches the cross-tab listener', async () => {
+  setLocalStorage(memStorage());
+  const s = new Store({ n: 0 }, { persist: ['n'], key: 'destroy-test' });
+  try {
+    s.destroy();
+    fireStorage('destroy-test', { n: 5 });
+    await tick();
+    expect(s.state.n).toBe(0);
+  } finally {
+    delete (/** @type {any} */ (globalThis)).localStorage;
+  }
+});

@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>auril.js — benchmarks</title>
+<style>
+  body { font: 15px/1.5 system-ui, sans-serif; margin: 2rem auto; max-width: 56rem; padding: 0 1rem; }
+  h1 { font-size: 1.3rem; }
+  h2 { font-size: 1.05rem; margin: 2rem 0 .25rem; }
+  p { color: #444; }
+  .note { font-size: .9rem; color: #666; margin: .25rem 0 .5rem; }
+  #bench { height: 4rem; overflow: auto; border: 1px solid #ddd; border-radius: 4px;
+           font: 11px/1.3 ui-monospace, monospace; padding: .25rem; margin: 1rem 0; }
+  #bench input { width: 3em; font: inherit; }
+  bench-cell { display: inline-block; margin-right: .4em; color: #777; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: right; padding: .3rem .6rem; border-bottom: 1px solid #eee; }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { border-bottom: 2px solid #ccc; font-weight: 600; }
+  code { background: #f4f4f4; padding: 0 .25em; border-radius: 3px; }
+  .status { color: #666; font-style: italic; }
+  .verdict { font-size: .9rem; margin: .5rem 0 0; }
+  .verdict.pass { color: #0a6b3d; }
+  .verdict.fail { color: #b00020; }
+</style>
+</head>
+<body>
+
+<h1>auril.js — benchmarks</h1>
+
+<p>
+  Kernel time only: layout and paint are excluded. Operations are timed in
+  auto-calibrated batches because Chrome clamps <code>performance.now()</code> to
+  100 µs unless the page is cross-origin isolated. Run
+  <code>bun run bench</code> for the throttled, recorded version.
+</p>
+
+<p class="status" id="status">Running…</p>
+
+<div id="bench"></div>
+
+<div id="out"></div>
+
+<script type="module">
+  import { runAll } from './all.js';
+
+  // Exposed for the Playwright runner, which drives the page with ?driven and
+  // supplies its own sample count.
+  window.runBench = runAll;
+
+  /** @param {string} tag @param {string} [text] @param {string} [className] */
+  function el(tag, text, className) {
+    const node = document.createElement(tag);
+    if (text !== undefined) node.textContent = text;
+    if (className) node.className = className;
+    return node;
+  }
+
+  function renderBlock(block) {
+    const section = el('section');
+    section.append(el('h2', block.title), el('p', block.note, 'note'));
+
+    const table = el('table');
+    const head = el('tr');
+    for (const column of block.columns) head.append(el('th', column));
+    const thead = el('thead');
+    thead.append(head);
+    const tbody = el('tbody');
+    for (const row of block.rows) {
+      const tr = el('tr');
+      for (const cell of row) tr.append(el('td', cell));
+      tbody.append(tr);
+    }
+    table.append(thead, tbody);
+    section.append(table);
+
+    if (block.verdict) {
+      const { pass, label, hard } = block.verdict;
+      section.append(el(
+        'p',
+        hard ? `${pass ? 'PASS' : 'FAIL'} — ${label}` : `NOTE — ${label}`,
+        `verdict ${hard && !pass ? 'fail' : 'pass'}`,
+      ));
+    }
+    return section;
+  }
+
+  function render(results) {
+    const out = document.getElementById('out');
+    out.replaceChildren(...results.blocks.map(renderBlock));
+    document.getElementById('status').textContent =
+      `${results.samples} samples per measurement, ${results.warmup} discarded as warmup.`;
+  }
+
+  if (new URLSearchParams(location.search).has('driven')) {
+    document.getElementById('status').textContent = 'Waiting for the runner…';
+  } else {
+    runAll().then((results) => {
+      window.__benchResults = results;
+      render(results);
+    });
+  }
+</script>
+
+</body>
+</html>

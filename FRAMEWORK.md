@@ -1,7 +1,7 @@
 # auril.js
 
 A no-build frontend kernel for personal apps to kill the bloat.
-Plain ES modules over web standards: **338 lines of kernel you own** (typed
+Plain ES modules over web standards: **495 lines of kernel you own** (typed
 via JSDoc), plus one vendored file (Idiomorph) for DOM morphing. No npm, no
 bundler, no transpilation — the files that ship are the files you wrote.
 
@@ -17,7 +17,8 @@ bloat it was built to escape.
 1. **Two-app rule.** Nothing enters the kernel until at least **two** apps
    need it *today*. Until then it lives in the app that wants it.
 2. **Hard size budget: 600 lines** for the kernel (top-level `src/*.js`,
-   excluding `src/vendor/`, `test/`, `examples/` — check: `wc -l src/*.js`).
+   excluding `src/vendor/`, `test/`, `examples/`, `bench/` — check:
+   `wc -l src/*.js`; currently 495).
    To cross it, delete something first. No subfolders inside `src/` — that
    is how creep starts.
 3. **Near-frozen.** Bug fixes are always welcome. Features must pass the
@@ -66,7 +67,12 @@ const list = html`<ul>${transactions.map(row)}</ul>`;
 ```
 
 `raw(str)` marks trusted markup (e.g. rendered markdown). Never wrap user
-input in `raw()`.
+input in `raw()`. Trust is carried by a `Symbol.for('auril.raw')` brand rather
+than `instanceof`, so two vendored copies of the kernel on one page compose
+instead of double-escaping across the seam.
+
+Because `0` renders, guard lists with a real boolean: `items.length > 0 && …`.
+`items.length && …` prints a bare `0` when the list is empty.
 
 ### morph.js — `morph(target, content, options?)`
 
@@ -111,14 +117,21 @@ customElements.define('monthly-list', MonthlyList);
 - `this.watch(selector, cb)` — `cb(slice, state)` only when the selected
   slice changes (`===` comparison). For re-render-on-slice:
   `this.watch((s) => s.yearMonth, () => this.update())`.
-- `this.update()` — `morph(this, this.render())`; logs the failing tag name
-  on render errors. **Memoized**: when render() output is string-identical to
-  the previous update, the morph is skipped entirely — coarse `watch()`
-  subscriptions cost one string compare, not a tree walk. The memo resets on
-  reconnect. Corollary: don't mutate a component's DOM outside render();
-  a skipped morph won't repair it.
-- `on()`, `delegate()`, and `watch()` throw when called before connect — call
-  them from `onConnect()`, never the constructor.
+- `this.update()` — `morph(this, this.render())`. **Memoized**: when render()
+  output is string-identical to the previous update, the morph is skipped
+  entirely — coarse `watch()` subscriptions cost one string compare, not a tree
+  walk. The memo resets on reconnect. Corollary: don't mutate a component's DOM
+  outside render(); a skipped morph won't repair it.
+- A failing `render()` is passed to `reportError()` wrapped with the tag name
+  (original error on `.cause`) and **never rethrown**. Rethrowing behaved
+  differently per call path: it escaped `connectedCallback` uncaught, but on the
+  store-driven path it landed in `Store`'s per-subscriber catch and only
+  produced a second log line. `reportError` reaches `window.onerror` from both.
+- `on()`, `delegate()`, and `watch()` throw when called before connect **or
+  after disconnect** — call them from `onConnect()`, never the constructor and
+  never from an async callback that may land after the element is gone. The
+  aborted-signal case matters because `addEventListener` with an already-aborted
+  signal is a silent no-op.
 
 Light DOM only — global CSS applies; no shadow root.
 
@@ -144,13 +157,18 @@ of hydrating a stale shape — migrations stay app code; without it the payload
 stays flat, so existing apps keep their stored data.
 Persisted slices also sync **across tabs**: a `storage` event from another tab
 re-applies the saved keys (last write wins; non-persisted keys untouched), so
-two open tabs stay in step.
+two open tabs stay in step. Only keys whose value *actually differs* are
+patched — the writing tab gets no event of its own, but a blind patch would
+still bounce (B adopts A's write, persists it, A receives it back), and because
+`JSON.parse` returns fresh references a `!==` check would fire every subscriber
+on every event. `store.destroy()` detaches the listener; apps rarely need it,
+tests and hot-swapped modules do.
 
 Design constraint: the public API (`state` getter, `set`, `subscribe`,
 microtask-batched notify) is kept swappable to a future native-signals backend
-(TC39 Signals, currently Stage 1). Don't add store API surface a
-`Signal.State`-based implementation couldn't honor — e.g. no synchronous
-notification guarantees.
+(TC39 Signals, **Stage 2** since late 2025 and moving toward Stage 3). Don't add
+store API surface a `Signal.State`-based implementation couldn't honor — e.g. no
+synchronous notification guarantees.
 
 ### router.js — `Router`
 
@@ -163,22 +181,37 @@ Transition when supported.
 new Router()
   .route('/v/:vault/', ({ vault }) => show('home', { vault }))
   .route('/v/:vault/review/:year', ({ vault, year }) => show('review', { vault, year }))
-  .notFound((path) => show('missing', { path }))
+  .route('/search', (_, url) => show('search', { q: url.searchParams.get('q') }))
+  .notFound((url) => show('missing', { path: url.pathname }))
   .start();                            // also intercepts same-origin link clicks
 router.go('/v/personal/');             // programmatic navigation
 ```
 
-One `navigate` listener intercepts same-origin navigations — link clicks,
-back/forward, and `go()`. Hash-only changes, downloads, form submissions,
-cross-origin navigations, and modified clicks are left to the browser via the
-platform's navigate-event flags rather than hand-rolled checks. An unmatched
-path with no `notFound` handler falls through to a real browser navigation.
-`start()` takes no options.
+Handlers receive `(params, url)`. Routes match on **`url.pathname` only** —
+query state comes off `url.searchParams`, and a query-only change re-runs the
+matching handler.
 
-### delegate.js — `delegate(root, type, selector, handler)`
+One `navigate` listener intercepts same-origin navigations — link clicks,
+back/forward, and `go()`. Hash-only changes, downloads, **POST** form
+submissions, cross-origin navigations, and modified clicks are left to the
+browser via the platform's navigate-event flags rather than hand-rolled checks.
+GET form submissions are ordinary same-origin navigations and stay routed. An
+unmatched path with no `notFound` handler falls through to a real browser
+navigation. `start()` takes no options and throws if called twice.
+
+Intercepted route changes are wrapped in a View Transition when supported, and
+the intercept handler awaits it — `startViewTransition` runs its callback in a
+*later* frame, so a handler that returned immediately would let the Navigation
+API restore scroll and reset focus against the pre-update DOM. The initial
+resolve in `start()` runs bare: a transition there would cross-fade from a blank
+page and cost a frame before first paint.
+
+### delegate.js — `delegate(root, type, selector, handler, opts?)`
 
 Event delegation: `handler(event, matchedElement)` when the event target
-matches `selector` inside `root`.
+matches `selector` inside `root`. Non-bubbling events (`focus`, `blur`,
+`mouseenter`, `mouseleave`) never reach `root` in the bubble phase — pass
+`{ capture: true }` for those.
 
 ### dev.js — `dev`
 
@@ -200,14 +233,31 @@ state: `__auril['auril-todos'].state`. Enable with `?auril-dev` in the URL or
   startEdit(id) { this.#editingId = id; this.update(); }
   ```
 - Stable `id`s on anything morph must track across renders.
+- **Keep one component's rendered tree under ~250 nodes.** Morph cost tracks
+  tree size, not change size (see Benchmarks), so a 1000-node component pays
+  ~30 ms per update under a 4× throttle whether one row changed or all of them.
+  Split a large view into several components with `watch(selector, cb)`: each
+  morph then walks a small tree, and the ones whose slice did not change never
+  morph at all. This is the reason the fan-out tax is worth paying.
 - `raw()` only at trusted edges (markdown renderer output) — never user input.
-- **Always quote interpolated attributes**: `class="${x}"`, not `class=${x}`.
-  `` html`` `` escapes `&<>"'` but not spaces or `=`, so an unquoted attribute
-  interpolation is an injection vector its escaping cannot close.
+- **Always quote interpolated attribute _values_**: `class="${x}"`, not
+  `class=${x}`. `` html`` `` escapes `&<>"'` but not spaces or `=`, so an
+  unquoted value is an injection vector its escaping cannot close. The single
+  exception is a boolean-attribute *flag* assembled from literals —
+  `<input type="checkbox" ${done ? 'checked' : ''}>` — where the interpolated
+  text can never originate in data. If it can, it goes in quotes.
+- Guard optional markup with a real boolean: `items.length > 0 && html\`…\``.
+  `items.length && …` renders a bare `0` for an empty list.
 - Inside an `AurilElement`, use `this.delegate()` (or pass `{ signal: this.signal }`
   to bare `delegate()`) so listeners die on disconnect — bare `delegate(this, …)`
   re-binds and stacks listeners on every reconnect.
-- Modals, menus, tooltips: `<dialog>` and `popover` — zero kernel code.
+- Modals, menus, tooltips: `<dialog>` and `popover` — zero kernel code. Wire the
+  buttons with `command` / `commandfor` (Invoker Commands, Baseline 2026) rather
+  than a click handler.
+- Scoped component CSS: `@scope` (Baseline 2026) confines styles to a subtree in
+  light DOM, and its `to` limit stops them leaking into nested components —
+  something no naming convention can express. This is the platform's answer to
+  shadow-DOM encapsulation, and it costs the kernel nothing.
 - Forms: native validation (`required`, `:user-invalid`) before JS.
 - **Controlled inputs** — the canonical form for inputs that write to the
   store on keystroke (search boxes, live filters): bind the value in markup —
@@ -246,8 +296,18 @@ add their own ~10-line `jsconfig.json` to get the same checking.
 Headless DOM tests (`element.js`, `delegate.js`) use happy-dom via a dev-only
 `devDependency` and a `test/setup.js` preload (`bunfig.toml`). Like `typescript`,
 it is a dev tool only — never a runtime dependency, never vendored (`vendor.sh`
-copies `src/` alone). `router.js` and `morph.js` stay untested headless:
-happy-dom has no Navigation API or URLPattern.
+copies `src/`, this file, and `LICENSE`). `router.js` and `morph.js` stay
+untested headless: happy-dom has no Navigation API or URLPattern. That is a
+limit of *headless* testing, not of testing — `bench/run.js` already drives a
+real browser and is where those tests belong.
+
+`src/vendor/idiomorph.d.ts` is a hand-written declaration file, not generated.
+Idiomorph writes its JSDoc in Closure style (`function(X): Y`), which TypeScript
+7 cannot parse, and `jsconfig.json`'s `exclude` cannot help because `morph.js`
+imports the file. A sibling `.d.ts` takes precedence over the `.js`, so the
+source is never parsed — `bunx tsc -p jsconfig.json` is clean with zero
+exceptions. It also gives `morph()`'s `options` a real type instead of `any`.
+Re-check it when bumping Idiomorph.
 
 `AurilElement.store` is typed `Store<any>`, so `this.watch((s) => s.todos, …)`
 sees `s` as `any`. For a fully typed selector and slice, close over the concrete
@@ -258,23 +318,76 @@ import { store } from './store.js';            // your Store<{ todos: Todo[] }>
 this.watch(() => store.state.todos, (todos) => { /* todos: Todo[] */ });
 ```
 
+This is a **typing trick only**. `watch()` always subscribes to
+`AurilElement.store`; the closed-over `store` merely supplies the types. It is
+correct exactly when that import *is* the instance assigned to the static. With
+two stores in one app, the selector would read one and the subscription would
+fire on the other's cadence — use `store.subscribe()` directly for the second
+store and unsubscribe on `this.signal`'s `abort`.
+
 `watch()`'s JSDoc `@overload`s already type each arity (no-arg, `cb`,
 `selector + cb`). Naming the tag `html` also lets editors with a lit / inline-html
 extension highlight and format the template literals (editor-dependent).
 
+## Benchmarks
+
+```sh
+bun run bench                     # 4x CPU throttle, writes bench/results.json
+bun bench/run.js --throttle=1     # unthrottled
+```
+
+`bench/run.js` drives the **system Chrome** through `playwright-core` (~5 MB, no
+browser download; dev-only, never vendored); `bench/index.html` also runs
+standalone under `bun serve.js`. Three scenarios: wide update, narrow update,
+fan-out.
+
+The four measured results that constrain how components are written:
+
+1. `render()` is **2–3 % of an update**. `update()`'s string memo skips the
+   *morph*, not the render — never weaken it, never optimise `render()`.
+2. **Morph cost tracks tree size, not change size** — a one-row change costs
+   84–91 % of changing every row. This is the basis for the ~250-node ceiling
+   in Conventions, and it invalidates any "the change is small so the morph is
+   cheap" argument.
+3. Morph costs **5–7× `innerHTML`**, which is the price of keeping node identity
+   and focus — `innerHTML` measurably loses both. Not a reason to switch.
+4. The fan-out tax is **~1.4 µs per idle subscribed component**. Negligible;
+   bare `watch()` needs no optimisation and no convention.
+
+Full numbers, methodology, closed decisions, and revisit triggers live in
+[PERFORMANCE.md](./PERFORMANCE.md). Do not re-argue any of the four without
+re-running the bench.
+
 ## Using with AI
 
 Reference this file in the app's CLAUDE.md (or paste it at session start) —
-it is the framework's entire context, ~2k tokens. The implementation is small
-enough that the model should **read the kernel files directly** instead of
-guessing: everything is within a few hundred lines. `examples/todos/app.js` is the
-canonical usage reference — a complete todo app (CRUD, inline editing,
-filters, persistence, search-as-you-type) showing every kernel piece and the
-local-state convention in ~170 lines.
+it is the framework's entire context, ~4k tokens. Watch that number: this file
+earns its place by being pasteable, and rule 6 ("undocumented = nonexistent")
+pushes it upward on every change. Detail that is *research* rather than
+*contract* belongs in PERFORMANCE.md or ALTERNATIVES.md, which nobody needs in
+context to write a component.
+
+The implementation is small enough that the model should **read the kernel
+files directly** instead of guessing: everything is within a few hundred lines.
+`examples/todos/app.js` is the canonical usage reference — a complete todo app
+(CRUD, inline editing, filters, persistence, search-as-you-type) showing every
+kernel piece and the local-state convention in ~180 lines.
 
 ## Versions
 
 - **Idiomorph (vendored)**: v0.7.4 (`src/idiomorph.js` at tag v0.7.4,
   2025-09-29, Zero-Clause BSD). Only local change: trailing
   `export {Idiomorph};`. Upgrade by replacing the file from the tag and
-  re-appending the export.
+  re-appending the export, then re-checking `src/vendor/idiomorph.d.ts` (see
+  DX below) against the file's own typedefs. v0.7.x uses `Element.moveBefore()` where available
+  (Chrome 133+), falling back to `insertBefore` — so list reorders preserve
+  iframe content, running animations, and focus, and do not fire
+  disconnect/reconnect on nested custom elements.
+- **Kernel, 2026-08**: `Router` handlers take `(params, url)` and the intercept
+  handler awaits the View Transition; the initial resolve no longer transitions;
+  `start()` throws on a second call. `AurilElement` reports render failures via
+  `reportError` instead of rethrowing, and its connect-scoped methods now also
+  throw after disconnect. `Store` gained `destroy()` and only patches cross-tab
+  keys whose value actually changed. `` html`` `` brands trusted markup with
+  `Symbol.for('auril.raw')`. Added `src/vendor/idiomorph.d.ts` and `bench/`.
+  Kernel: 495/600 lines.

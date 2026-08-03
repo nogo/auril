@@ -26,3 +26,11 @@ test('arrays of nested html`` join unescaped', () => {
 test('escapeHtml covers the five specials', () => {
   expect(escapeHtml(`&<>"'`)).toBe('&amp;&lt;&gt;&quot;&#39;');
 });
+
+test('trusted markup is recognised by brand, not class identity', () => {
+  // Stands in for a result produced by a *second* vendored copy of auril on the
+  // same page: same registry symbol, different Raw class. An `instanceof` check
+  // would double-escape it.
+  const foreign = { [Symbol.for('auril.raw')]: true, toString: () => '<b>ok</b>' };
+  expect(String(html`<div>${foreign}</div>`)).toBe('<div><b>ok</b></div>');
+});

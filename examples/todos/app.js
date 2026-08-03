@@ -26,6 +26,8 @@ const FILTERS = /** @type {const} */ ([
 class TodoApp extends AurilElement {
   /** Component-local state: which todo is being edited. Not the store's business. */
   #editingId = /** @type {number | null} */ (null);
+  /** The unsaved new-todo draft — local too, but it must be bound in render(). */
+  #draft = '';
 
   onConnect() {
     this.watch(); // shared state: re-render on any store change
@@ -36,10 +38,23 @@ class TodoApp extends AurilElement {
       const input = /** @type {HTMLInputElement | null} */ (this.querySelector('.new-todo'));
       const text = input?.value.trim();
       if (!input || !text) return;
+      this.#draft = '';
       store.set((s) => ({
         todos: [...s.todos, { id: Math.max(0, ...s.todos.map((t) => t.id)) + 1, text, done: false }],
       }));
+      // The store patch re-renders with value="", but the input still has focus
+      // and ignoreActiveValue shields a focused value from the morph — clear it
+      // directly as well.
       input.value = '';
+    });
+
+    // The draft lives in a field purely so render() can bind it. An *unbound*
+    // input inside a re-rendering region is a bug: Idiomorph clears any input
+    // whose new markup carries no value attribute, so a half-typed draft would
+    // vanish on the first re-render after it loses focus. No update() call here
+    // — the DOM already shows what was typed.
+    this.delegate('input', '.new-todo', (_, el) => {
+      this.#draft = /** @type {HTMLInputElement} */ (el).value;
     });
 
     // Search-as-you-type: every keystroke patches the store, which re-morphs
@@ -114,6 +129,9 @@ class TodoApp extends AurilElement {
     if (this.#editingId === todo.id) {
       return html`<li id="todo-${todo.id}"><input class="edit" value="${todo.text}"></li>`;
     }
+    // `${todo.done ? 'checked' : ''}` is the boolean-attribute case: the
+    // interpolated text is a literal flag, never data. Interpolated *values*
+    // always go in quotes — see the Conventions section of FRAMEWORK.md.
     return html`
       <li id="todo-${todo.id}" class="${todo.done ? 'done' : ''}">
         <input class="toggle" type="checkbox" ${todo.done ? 'checked' : ''}>
@@ -130,7 +148,7 @@ class TodoApp extends AurilElement {
     const doneCount = todos.filter((t) => t.done).length;
     return html`
       <h1>todos</h1>
-      <form><input class="new-todo" placeholder="What needs to be done?" autocomplete="off" autofocus></form>
+      <form><input class="new-todo" value="${this.#draft}" placeholder="What needs to be done?" autocomplete="off" autofocus></form>
       <input class="search" type="search" value="${query}" placeholder="Search…" autocomplete="off">
       <ul class="todo-list">${visible.map((t) => this.#row(t))}</ul>
       ${todos.length > 0 && html`

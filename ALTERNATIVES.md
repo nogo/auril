@@ -5,7 +5,7 @@ components, events)? This file records the landscape as of **July 2026** so
 future decisions argue against data, not vibes. Sizes are min+gzip;
 `~` = secondary source; **?** = unverified.
 
-auril.js baseline: **419 lines** kernel + Idiomorph v0.7.4 vendored (~3.3 KB),
+auril.js baseline: **495 lines** kernel + Idiomorph v0.7.4 vendored (~3.3 KB),
 model = render HTML strings → morph light DOM, no build step.
 
 ## Matrix
@@ -59,7 +59,7 @@ UI), Mavo/Strawberry (**?** likely inactive). Cami.js is a conceptual sibling
 
 | Proposal | Status (mid-2026) | Kernel impact |
 |---|---|---|
-| **TC39 Signals** | Stage 1, no Stage 2 in sight | Could eventually delete `store.js`; polyfill vendorable today but API churn |
+| **TC39 Signals** | **Stage 2** since late 2025, refining toward Stage 3 | Could eventually delete `store.js`; polyfill vendorable today but API churn. Now the most likely of these to land — keep the Store API swappable |
 | **DOM Parts** | Iterating, not shipped | Would make templating native — biggest possible shrink, not on a 2-yr horizon |
 | **Template Instantiation** | Folded into DOM Parts | Don't wait |
 | **`Element.moveBefore()`** | Chrome 133+, Firefox 144+, no Safari — not Baseline | Idiomorph 0.7.4 already uses it opportunistically; nothing to do |
@@ -116,7 +116,26 @@ they parse templates once and touch only bindings. It only matters at
 never approach it. Counts as **one** observed instance of morph-model pain
 toward the two-instance revisit trigger below.
 
-**Standing conclusion (2026-07):** the string+morph model stays. The genuine
-future fork in the road is *template parts* (uhtml/lit-html today, DOM Parts
-natively later): revisit when either the two-app rule surfaces morph-model
-pain twice, or DOM Parts ships cross-browser.
+## Quantified: the same cost, measured (2026-08)
+
+[PERFORMANCE.md](./PERFORMANCE.md) replaces the dbmonster eyeball test with
+`bench/` — three scenarios in a throttled Chrome, committed numbers. The
+headline for *this* file: morph costs **5–7× `innerHTML`** and its cost tracks
+**tree size, not change size** (a one-row change costs 84–91 % of changing every
+row), while building the HTML string is only 2–3 % of an update. In other words
+the parse-and-walk is the whole bill, and template parts are precisely what
+would remove it.
+
+This is **not** a second instance of morph-model pain. It measures the same
+phenomenon the dbmonster run surfaced, more precisely; it does not surface a new
+one. **The trigger below still stands at one instance.** The mitigation adopted
+instead was a documented ~250-node per-component ceiling (FRAMEWORK.md
+Conventions) — zero kernel lines, and it keeps every morph walking a small tree.
+
+**Standing conclusion (reaffirmed 2026-08):** the string+morph model stays. The
+genuine future fork in the road is *template parts* (uhtml/lit-html today, DOM
+Parts natively later): revisit when either the two-app rule surfaces morph-model
+pain twice, or DOM Parts ships cross-browser. The 2026-08 measurements sharpen
+what to check at that point — see the revisit-trigger table in PERFORMANCE.md,
+especially "separate parse cost from diff cost", which decides whether template
+caching alone would recover most of the 5–7×.

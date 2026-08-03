@@ -17,6 +17,7 @@ export class Store {
   /** @type {number | undefined} */
   #version;
   #pending = false;
+  #ac = new AbortController();
 
   /**
    * @param {S} defaults
@@ -28,11 +29,20 @@ export class Store {
     this.#version = version;
     this.#state = this.#hydrate(defaults);
     if (dev.enabled) (/** @type {any} */ (globalThis).__auril ??= {})[key] = this;
-    if (persist.length) globalThis.addEventListener?.('storage', (event) => this.#syncFromStorage(event));
+    if (persist.length) globalThis.addEventListener?.('storage', (event) => this.#syncFromStorage(event), { signal: this.#ac.signal });
   }
 
   get state() {
     return this.#state;
+  }
+
+  /**
+   * Detach the cross-tab `storage` listener. An app's store lives as long as the
+   * page, so apps rarely call this; tests and hot-swapped modules need it to
+   * avoid stacking listeners on `globalThis`.
+   */
+  destroy() {
+    this.#ac.abort();
   }
 
   /**
@@ -102,9 +112,14 @@ export class Store {
   }
 
   /**
-   * Mirror a cross-tab localStorage write into this store. The `storage` event
-   * fires only in *other* tabs, so there is no echo loop; last write wins and
-   * non-persisted keys are untouched. Corrupt payloads keep current state.
+   * Mirror a cross-tab localStorage write into this store. Last write wins;
+   * non-persisted keys are untouched; corrupt payloads keep current state.
+   *
+   * Only keys whose value *actually differs* are patched. The writing tab gets
+   * no event of its own, but a blind patch would still bounce: B adopts A's
+   * write, persists it, and A receives that write back. Comparison is by value
+   * because JSON.parse hands back fresh references every time — a `!==` check
+   * would patch (and re-notify every subscriber) on every event.
    * @param {StorageEvent} event
    */
   #syncFromStorage(event) {
@@ -116,7 +131,10 @@ export class Store {
       const patch = {};
       let changed = false;
       for (const key of this.#persistKeys) {
-        if (data[key] !== undefined) { patch[/** @type {keyof S} */ (key)] = data[key]; changed = true; }
+        const value = data[key];
+        if (value === undefined || JSON.stringify(value) === JSON.stringify(this.#state[key])) continue;
+        patch[/** @type {keyof S} */ (key)] = value;
+        changed = true;
       }
       if (changed) this.set(patch);
     } catch { /* corrupt cross-tab payload — keep current state */ }

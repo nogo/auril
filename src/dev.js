@@ -3,6 +3,8 @@ export const dev = {
   enabled: typeof location !== 'undefined' && new URLSearchParams(location.search).has('auril-dev'),
   /** @param {...unknown} args */
   log(...args) {
-    if (this.enabled) console.debug('[auril]', ...args);
+    // `dev.enabled`, not `this.enabled` — so a destructured `const { log } = dev`
+    // keeps working.
+    if (dev.enabled) console.debug('[auril]', ...args);
   },
 };

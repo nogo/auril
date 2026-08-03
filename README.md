@@ -7,7 +7,7 @@ stateful web apps without npm, a bundler, transpilation, JSX, a virtual DOM, or
 a component compiler. Files ship as plain ES modules. The debugger shows the
 same source you wrote.
 
-The kernel is intentionally small: top-level `src/*.js` currently fits in 338
+The kernel is intentionally small: top-level `src/*.js` currently fits in 495
 lines, plus one vendored DOM morphing file.
 
 ## Why
@@ -40,7 +40,9 @@ in the app.
 - **Small by rule.** Kernel code has a hard 600-line budget for top-level
   `src/*.js`.
 
-See [FRAMEWORK.md](./FRAMEWORK.md) for the full contract, and
+See [FRAMEWORK.md](./FRAMEWORK.md) for the full contract,
+[PERFORMANCE.md](./PERFORMANCE.md) for what the model measurably costs (and
+which changes the numbers rule in or out), and
 [ALTERNATIVES.md](./ALTERNATIVES.md) for the researched landscape of
 alternative tiny-kernel approaches (why string+morph, and when to revisit).
 
@@ -116,11 +118,20 @@ const list = html`<ul>${todos.map(item)}</ul>`;
 ```
 
 Use `raw(str)` only for trusted markup, such as sanitized markdown renderer
-output. Never wrap user input in `raw()`.
+output. Never wrap user input in `raw()`. Trusted results are branded with
+`Symbol.for('auril.raw')` rather than `instanceof`, so two vendored copies of the
+kernel on one page compose instead of double-escaping across the seam.
 
-Always **quote interpolated attributes** — `class="${x}"`, never `class=${x}`.
-Escaping covers `&<>"'` but not spaces or `=`, so an unquoted attribute value is
-an injection vector escaping cannot close.
+Always **quote interpolated attribute values** — `class="${x}"`, never
+`class=${x}`. Escaping covers `&<>"'` but not spaces or `=`, so an unquoted value
+is an injection vector escaping cannot close. The one exception is a
+boolean-attribute flag built from literals
+(`<input type="checkbox" ${done ? 'checked' : ''}>`), where the interpolated text
+never comes from data.
+
+`0` renders, so guard optional markup with a real boolean —
+`items.length > 0 && html\`…\``. `items.length && …` prints a bare `0` when the
+list is empty.
 
 ### `morph`
 
@@ -136,6 +147,10 @@ Give repeated items stable `id` attributes so reorders pair the right nodes:
 ```js
 html`<li id="todo-${todo.id}">${todo.text}</li>`;
 ```
+
+Idiomorph uses `Element.moveBefore()` where available (Chrome 133+), so a reorder
+moves nodes atomically: iframes keep their content, running animations don't
+restart, and nested custom elements don't see a disconnect/reconnect cycle.
 
 ### `AurilElement`
 
@@ -166,6 +181,11 @@ Useful methods:
   slice changes by `===`.
 - `this.update()` morphs the element to match `render()` — skipped when the
   rendered string is unchanged, so broad `watch()` subscriptions stay cheap.
+
+`on()`, `delegate()`, and `watch()` throw when called before connect or after
+disconnect — call them from `onConnect()`. A failing `render()` is passed to
+`reportError()` (tag name in the message, original error on `.cause`) and never
+rethrown, so the connect path and the store-driven path fail identically.
 
 Component-local state should live in private fields:
 
@@ -201,8 +221,13 @@ silently to in-memory state. An optional `version` discards incompatible saved
 data (defaults win) when you bump it after a persisted shape changes, instead
 of hydrating stale data. A subscriber that throws is caught and logged, so one
 bad subscriber never blocks the others in a batch.
+
 Persisted slices also sync across browser tabs: a `storage` event from another
 tab re-applies the saved keys (last write wins; non-persisted keys untouched).
+Only keys whose value actually differs are patched — otherwise the adopting tab
+would write back and bounce the change to the sender, and every subscriber would
+fire on each event because `JSON.parse` hands back fresh references.
+`store.destroy()` detaches that listener; apps rarely need it, tests do.
 
 ### `Router`
 
@@ -213,16 +238,26 @@ tab re-applies the saved keys (last write wins; non-persisted keys untouched).
 const router = new Router()
   .route('/v/:vault/', ({ vault }) => showHome(vault))
   .route('/v/:vault/review/:year', ({ vault, year }) => showReview(vault, year))
-  .notFound((path) => showMissing(path))
+  .route('/search', (_, url) => showSearch(url.searchParams.get('q')))
+  .notFound((url) => showMissing(url.pathname))
   .start();
 
 router.go('/v/personal/');
 ```
 
+Handlers receive `(params, url)`. Routes match on `url.pathname` only; query
+state comes off `url.searchParams`.
+
 One `navigate` listener intercepts same-origin navigations — link clicks,
-back/forward, and `go()`. Hash-only changes, downloads, form submissions, and
-cross-origin navigations are left to the browser, as are unmatched paths when
-no `notFound` handler is registered.
+back/forward, and `go()`. Hash-only changes, downloads, **POST** form
+submissions, and cross-origin navigations are left to the browser, as are
+unmatched paths when no `notFound` handler is registered. GET form submissions
+are ordinary navigations and stay routed. `start()` throws if called twice.
+
+Intercepted route changes are wrapped in a View Transition and the intercept
+handler awaits it, so the browser does not restore scroll or reset focus before
+the new view is in place. The initial resolve in `start()` runs without a
+transition — it would otherwise cross-fade from a blank page.
 
 ### `delegate`
 
@@ -239,6 +274,9 @@ delegate(this, 'click', '.destroy', (event, button) => {
 `this.delegate(type, selector, handler)`, which scopes to the element and removes
 the listener on disconnect; bare `delegate(this, …)` stacks listeners across
 reconnects.
+
+Non-bubbling events (`focus`, `blur`, `mouseenter`, `mouseleave`) never reach
+`root` in the bubble phase — pass `{ capture: true }` for those.
 
 ### `dev`
 
@@ -291,6 +329,18 @@ Run type checking:
 bunx tsc -p jsconfig.json
 ```
 
+Run the benchmarks — wide update, narrow update, fan-out — in the system Chrome
+via `playwright-core` at a 4× CPU throttle:
+
+```sh
+bun run bench                     # writes bench/results.json
+bun bench/run.js --throttle=1     # unthrottled
+```
+
+`bench/index.html` also runs standalone: serve the repo and open `/bench/`.
+See the Benchmarks section of [FRAMEWORK.md](./FRAMEWORK.md) for the committed
+baseline and what it implies for component size.
+
 Check the kernel line budget:
 
 ```sh
@@ -311,8 +361,11 @@ src/
   index.js       public exports
   vendor/        pinned third-party code
 examples/        demo gallery (todos, counter, async, router, animation, dbmonster); examples/todos/ is the canonical usage reference
-test/            bun tests
+test/            bun tests (happy-dom)
+bench/           browser benchmarks (Playwright + system Chrome); results.json is committed
 FRAMEWORK.md     compact canonical framework contract
+PERFORMANCE.md   measured costs, closed decisions, revisit triggers
+ALTERNATIVES.md  researched landscape of alternative kernels
 vendor.sh        copy kernel into an app
 serve.js         static dev server (live reload, SPA fallback)
 ```

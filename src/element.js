@@ -51,9 +51,9 @@ export class AurilElement extends HTMLElement {
    * @param {AddEventListenerOptions} [opts]
    */
   on(target, type, handler, opts = {}) {
-    if (!this.signal) throw new Error(`[auril] <${this.localName}>: on() called before connect — call it from onConnect()`);
-    const signal = opts.signal ? AbortSignal.any([this.signal, opts.signal]) : this.signal;
-    target.addEventListener(type, handler, { ...opts, signal });
+    this.#assertLive('on');
+    const signal = /** @type {AbortSignal} */ (this.signal);
+    target.addEventListener(type, handler, { ...opts, signal: opts.signal ? AbortSignal.any([signal, opts.signal]) : signal });
   }
 
   /**
@@ -66,9 +66,21 @@ export class AurilElement extends HTMLElement {
    * @param {AddEventListenerOptions} [opts]
    */
   delegate(type, selector, handler, opts = {}) {
-    if (!this.signal) throw new Error(`[auril] <${this.localName}>: delegate() called before connect — call it from onConnect()`);
-    const signal = opts.signal ? AbortSignal.any([this.signal, opts.signal]) : this.signal;
-    delegate(this, type, selector, handler, { ...opts, signal });
+    this.#assertLive('delegate');
+    const signal = /** @type {AbortSignal} */ (this.signal);
+    delegate(this, type, selector, handler, { ...opts, signal: opts.signal ? AbortSignal.any([signal, opts.signal]) : signal });
+  }
+
+  /**
+   * Guard for the connect-scoped methods. Checks `aborted`, not just presence:
+   * `disconnectedCallback` leaves `this.signal` in place, and addEventListener
+   * with an already-aborted signal is a silent no-op — so an async callback
+   * landing after disconnect would otherwise register nothing and say nothing.
+   * @param {string} method
+   */
+  #assertLive(method) {
+    if (!this.signal) throw new Error(`[auril] <${this.localName}>: ${method}() called before connect — call it from onConnect()`);
+    if (this.signal.aborted) throw new Error(`[auril] <${this.localName}>: ${method}() called after disconnect`);
   }
 
   /**
@@ -98,10 +110,11 @@ export class AurilElement extends HTMLElement {
   watch(selectorOrCb, maybeCb) {
     const store = /** @type {typeof AurilElement} */ (this.constructor).store;
     if (!store) throw new Error(`[auril] <${this.localName}>: assign AurilElement.store before calling watch()`);
-    if (!this.signal) throw new Error(`[auril] <${this.localName}>: watch() called before connect — call it from onConnect()`);
+    this.#assertLive('watch');
     const selector = typeof maybeCb === 'function' ? selectorOrCb : null;
     const cb = (selector ? maybeCb : selectorOrCb) ?? (() => this.update());
     let prev = selector ? selector(store.state) : undefined;
+    const signal = /** @type {AbortSignal} */ (this.signal);
     const unsub = store.subscribe((state) => {
       if (!selector) return cb(state, state);
       const next = selector(state);
@@ -109,13 +122,18 @@ export class AurilElement extends HTMLElement {
       prev = next;
       cb(next, state);
     });
-    this.signal.addEventListener('abort', unsub, { once: true });
+    signal.addEventListener('abort', unsub, { once: true });
   }
 
   /**
    * Morph the live DOM to match render(). Preserves focus, selection, scroll.
    * Skipped entirely when render() output is unchanged since the last update,
    * so coarse watch() subscriptions stay cheap.
+   *
+   * A failing render is reported, never rethrown. The two call paths used to
+   * disagree: a throw escaped connectedCallback uncaught, but on the store-driven
+   * path it landed in Store's per-subscriber catch and was merely logged twice.
+   * reportError() reaches window.onerror and telemetry identically from both.
    */
   update() {
     const self = /** @type {AurilElement & Hooks} */ (this);
@@ -127,8 +145,7 @@ export class AurilElement extends HTMLElement {
       morph(this, next);
       this.#lastHtml = next;
     } catch (err) {
-      console.error(`[auril] render failed in <${this.localName}>`, err);
-      throw err;
+      reportError(new Error(`[auril] render failed in <${this.localName}>`, { cause: err }));
     }
   }
 }

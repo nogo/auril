@@ -55,6 +55,36 @@ test('on(), delegate(), and watch() throw before connect', () => {
   expect(() => el.watch()).toThrow(/before connect/);
 });
 
+test('on(), delegate(), and watch() throw after disconnect', () => {
+  AurilElement.store = new Store({ x: 1 });
+  const el = create();
+  document.body.append(el);
+  el.remove();
+  // The signal survives disconnect in aborted form, and addEventListener with an
+  // aborted signal is a silent no-op — so these must throw rather than no-op.
+  expect(() => el.on(el, 'click', () => {})).toThrow(/after disconnect/);
+  expect(() => el.delegate('click', 'a', () => {})).toThrow(/after disconnect/);
+  expect(() => el.watch()).toThrow(/after disconnect/);
+});
+
+test('a failing render() is reported once per path, never rethrown', () => {
+  const el = create({ render() { throw new Error('boom'); } });
+  const orig = globalThis.reportError;
+  /** @type {any[]} */
+  const reported = [];
+  globalThis.reportError = (/** @type {any} */ err) => { reported.push(err); };
+  try {
+    document.body.append(el); // connect path: must not escape connectedCallback
+    el.update();              // store-driven path: same behaviour
+  } finally {
+    globalThis.reportError = orig;
+  }
+  expect(reported.length).toBe(2);
+  expect(reported[0].message).toMatch(/render failed in <auril-test-/);
+  expect(reported[0].cause.message).toBe('boom');
+  el.remove();
+});
+
 test('update() morphs render() output into the element', () => {
   const el = create({ render() { return '<p class="x">hi</p>'; } });
   document.body.append(el); // connectedCallback runs update() because render is defined
