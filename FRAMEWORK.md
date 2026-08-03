@@ -226,8 +226,9 @@ state: `__auril['auril-todos'].state`. Enable with `?auril-dev` in the URL or
 
 `src/` is the self-contained vendored unit: its contents (kernel +
 `vendor/idiomorph.js`) are copied verbatim, plus this file (the pinned copy
-records its version below). Apps import `./auril/index.js`. Upgrade by
-re-running deliberately — diff the result like any dependency bump.
+records its version below) and `LICENSE` (MIT — the notice travels with
+copies). Apps import `./auril/index.js`. Upgrade by re-running deliberately —
+diff the result like any dependency bump.
 
 ## DX: types without a build step
 

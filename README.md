@@ -261,8 +261,8 @@ auril.js is meant to be copied into apps, not installed from a registry.
 ./vendor.sh ../budget/web/auril
 ```
 
-The script copies `src/` and `FRAMEWORK.md` into the destination. Your app then
-imports:
+The script copies `src/`, `FRAMEWORK.md`, and `LICENSE` into the destination.
+Your app then imports:
 
 ```js
 import { html, AurilElement, Store } from './auril/index.js';
@@ -329,5 +329,8 @@ behavior is not part of the framework.
 
 ## License
 
-No license file is currently included. Add one before publishing the repository
-publicly if you want others to reuse the code under explicit terms.
+MIT — see [LICENSE](./LICENSE). `vendor.sh` copies the license file into the
+destination, so vendored copies carry the notice MIT requires.
+
+`src/vendor/idiomorph.js` is Idiomorph v0.7.4 under Zero-Clause BSD, which
+imposes no notice requirement of its own.

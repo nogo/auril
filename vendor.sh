@@ -9,5 +9,6 @@ STAMP="$(git -C "$SRC" describe --tags --always 2>/dev/null || echo dev)"
 mkdir -p "$DEST"
 cp -R "$SRC"/src/. "$DEST"/
 cp "$SRC"/FRAMEWORK.md "$DEST"/
+cp "$SRC"/LICENSE "$DEST"/   # MIT requires the notice to travel with copies
 printf '\n> Vendored from auril.js %s on %s.\n' "$STAMP" "$(date +%F)" >> "$DEST/FRAMEWORK.md"
 echo "vendored auril.js $STAMP -> $DEST"
