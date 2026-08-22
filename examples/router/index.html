@@ -26,9 +26,15 @@
 <body>
   <h1>router</h1>
   <notes-app></notes-app>
-  <p><a href="/examples/">← All examples</a></p>
-  <!-- Absolute path: with SPA deep links (/examples/router/note/3) a relative
-       src would resolve against the note URL and 404. -->
-  <script type="module" src="/examples/router/app.js"></script>
+  <p><a class="up" href="../">← All examples</a></p>
+  <!-- On a deep link (…/router/note/3) a relative URL resolves against the note
+       path, so pin both the module and the way out to this demo's directory.
+       Derived rather than absolute so the demo also works under a path prefix
+       (GitHub Pages serves the repo at /auril/). -->
+  <script type="module">
+    const dir = location.pathname.replace(/(\/router\/).*$/, '$1');
+    document.querySelector('.up').href = dir + '../';
+    import(dir + 'app.js');
+  </script>
 </body>
 </html>

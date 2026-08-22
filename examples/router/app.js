@@ -4,7 +4,9 @@
 // Transitions (built into Router, zero code here).
 import { html, AurilElement, Store, Router } from '../../src/index.js';
 
-const BASE = '/examples/router';
+// Derived, not hardcoded: the demo works at any mount point (a path prefix
+// like /auril/ on GitHub Pages) and on deep links, where relative URLs shift.
+const BASE = new URL('.', import.meta.url).pathname.replace(/\/$/, '');
 
 const NOTES = [
   { id: 1, title: 'Navigation API', body: 'One `navigate` listener intercepts link clicks, back/forward, and go(). No click hijacking, no popstate juggling.' },

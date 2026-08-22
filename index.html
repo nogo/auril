@@ -1,0 +1,695 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>auril.js — no-build frontend kernel for personal apps</title>
+<meta name="description" content="A 504-line frontend kernel for small web apps: escaped HTML templates, DOM morphing, custom elements, one store, a router. No npm, no bundler, no JSX.">
+<link rel="canonical" href="https://nogo.github.io/auril/">
+<meta name="theme-color" content="#faf8f4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121110" media="(prefers-color-scheme: dark)">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="auril.js">
+<meta property="og:url" content="https://nogo.github.io/auril/">
+<meta property="og:title" content="auril.js — no-build frontend kernel for personal apps">
+<meta property="og:description" content="504 of a 600-line budget. Small by rule, not by accident. No npm, no bundler, no JSX, no virtual DOM.">
+<meta property="og:image" content="https://nogo.github.io/auril/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="auril.js — a no-build frontend kernel for personal apps. 504 lines, zero dependencies, zero build steps.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="auril.js — no-build frontend kernel for personal apps">
+<meta name="twitter:description" content="504 of a 600-line budget. Small by rule, not by accident.">
+<meta name="twitter:image" content="https://nogo.github.io/auril/og.png">
+
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%239a5313'/><text x='16' y='23' font-family='system-ui' font-size='20' font-weight='300' fill='%23fff' text-anchor='middle'>a</text></svg>">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareSourceCode",
+  "name": "auril.js",
+  "alternateName": "auril",
+  "description": "A no-build frontend kernel for personal apps: escaped HTML templates, DOM morphing, custom elements, one store and a Navigation API router in 504 lines of plain ES modules.",
+  "url": "https://nogo.github.io/auril/",
+  "codeRepository": "https://github.com/nogo/auril",
+  "programmingLanguage": "JavaScript",
+  "runtimePlatform": "Web browser",
+  "license": "https://opensource.org/licenses/MIT",
+  "author": { "@type": "Person", "name": "Danilo Kühn" }
+}
+</script>
+
+<style>
+/* ------------------------------------------------------------------ tokens */
+:root {
+  color-scheme: light dark;
+  --bg: #faf8f4;
+  --panel: #ffffff;
+  --ink: #191612;
+  --muted: #6d675e;
+  --gold: #9a5313;
+  --gold-dim: #b98243;
+  --code-bg: #f2eee6;
+  --rule: color-mix(in srgb, var(--ink) 14%, transparent);
+  --rule-soft: color-mix(in srgb, var(--ink) 7%, transparent);
+  --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121110;
+    --panel: #191816;
+    --ink: #ece8e0;
+    --muted: #948d83;
+    --gold: #e6a45f;
+    --gold-dim: #a8763f;
+    --code-bg: #1c1b18;
+  }
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; text-decoration-color: color-mix(in srgb, currentColor 32%, transparent); text-underline-offset: .18em; }
+a:hover { text-decoration-color: var(--gold); }
+code, pre, kbd { font-family: var(--mono); }
+h2, h3 { text-wrap: balance; }
+
+.wrap { width: min(100% - 2.5rem, 66rem); margin-inline: auto; }
+.prose { max-width: 40rem; }
+.prose p { margin: 0 0 1rem; }
+.prose p:last-child { margin-bottom: 0; }
+.muted { color: var(--muted); }
+
+/* The ruler: the page's one ornament, and it means something —
+   "measured, not claimed" is the project's whole posture. */
+.ruler {
+  height: 4px;
+  background: repeating-linear-gradient(to right, var(--gold) 0 1px, transparent 1px 11px);
+  opacity: .4;
+}
+
+/* ------------------------------------------------------------------ top bar */
+.top {
+  display: flex; align-items: baseline; gap: 1.4rem;
+  padding: 1.5rem 0 1.2rem;
+  font-size: .8125rem;
+  border-bottom: 1px solid var(--rule-soft);
+}
+.top .name { font-family: var(--mono); letter-spacing: -.02em; font-size: .875rem; }
+.top nav { margin-left: auto; display: flex; gap: 1.3rem; flex-wrap: wrap; }
+.top nav a { text-decoration: none; color: var(--muted); font-family: var(--mono); letter-spacing: .02em; }
+.top nav a:hover { color: var(--gold); }
+@media (max-width: 34rem) {
+  .top { flex-wrap: wrap; row-gap: .7rem; }
+  .top nav { margin-left: 0; width: 100%; gap: 1rem; }
+}
+
+/* ------------------------------------------------------------------- hero */
+.hero { display: grid; gap: 2.5rem; padding: clamp(2.5rem, 7vw, 5rem) 0 clamp(2.5rem, 6vw, 4rem); }
+@media (min-width: 64rem) { .hero { grid-template-columns: 1.05fr 1fr; gap: 4rem; align-items: center; } }
+
+.hero h1 {
+  font-size: clamp(3.4rem, 11vw, 6.5rem);
+  font-weight: 200; letter-spacing: -.05em; line-height: .92;
+  margin: 0 0 1.2rem;
+}
+.hero h1 .dot { color: var(--gold); }
+.tagline { font-size: clamp(1.3rem, 2.4vw, 1.7rem); font-weight: 300; line-height: 1.3; margin: 0 0 1.3rem; max-width: 24ch; }
+.hero .sub { margin: 0 0 1.8rem; color: var(--muted); font-size: .9375rem; max-width: 42ch; }
+.hero .sub strong { color: var(--ink); font-weight: 500; }
+
+.pillars {
+  display: flex; flex-wrap: wrap; gap: .4rem .9rem; margin: 0 0 1.8rem; padding: 0;
+  list-style: none; font-family: var(--mono); font-size: .75rem;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+}
+.pillars li { display: flex; align-items: center; gap: .55rem; }
+.pillars li::before { content: ""; width: .3rem; height: .3rem; background: var(--gold); }
+
+.cta { display: flex; flex-wrap: wrap; gap: .7rem; margin: 0; }
+.btn {
+  display: inline-block; padding: .6rem 1.15rem; border-radius: .3rem;
+  border: 1px solid var(--rule); text-decoration: none; font-size: .9375rem;
+}
+.btn:hover { border-color: var(--gold); color: var(--gold); }
+.btn.primary { background: var(--gold); border-color: var(--gold); color: var(--bg); }
+.btn.primary:hover { color: var(--bg); filter: brightness(1.08); }
+
+/* ------------------------------------------------------- the budget meter */
+.meter { margin: 0; }
+.meter-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  font-family: var(--mono); font-size: .75rem; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: .9rem;
+}
+.meter-figure { display: flex; align-items: baseline; gap: .5rem; margin-bottom: 1rem; }
+.meter-figure b { font-size: 3.4rem; font-weight: 200; letter-spacing: -.04em; line-height: 1; font-family: var(--mono); }
+.meter-figure span { font-size: .9375rem; color: var(--muted); }
+
+.meter-bar { display: flex; gap: 2px; height: 2.6rem; }
+.meter-bar span { flex: var(--n); background: var(--gold); border-radius: 1px; }
+.meter-bar .headroom {
+  background: repeating-linear-gradient(135deg, transparent 0 4px, var(--rule) 4px 5px);
+  border: 1px solid var(--rule); border-radius: 1px;
+}
+.meter-ticks {
+  height: 7px; margin-top: 3px;
+  background: repeating-linear-gradient(to right, var(--rule) 0 1px, transparent 1px calc(100% / 6));
+}
+.meter-scale {
+  display: flex; justify-content: space-between;
+  font-family: var(--mono); font-size: .6875rem; color: var(--muted);
+  letter-spacing: .06em; margin-top: .3rem;
+}
+.meter-note { font-size: .8125rem; color: var(--muted); margin: 1.1rem 0 0; line-height: 1.5; max-width: 34rem; }
+
+/* --------------------------------------------------------------- sections */
+section { border-top: 1px solid var(--rule-soft); }
+.sec { display: grid; gap: 1.2rem; padding: clamp(2.5rem, 6vw, 4.5rem) 0; }
+@media (min-width: 64rem) {
+  .sec { grid-template-columns: 7.5rem 1fr; gap: 3rem; }
+  .sec-head { position: sticky; top: 2.5rem; align-self: start; }
+}
+.sec-head { display: flex; gap: .8rem; align-items: baseline; }
+@media (min-width: 64rem) { .sec-head { display: block; } }
+.sec-num {
+  font-family: var(--mono); font-size: 2.4rem; font-weight: 200; line-height: 1;
+  color: color-mix(in srgb, var(--ink) 22%, transparent); margin: 0 0 .3rem; letter-spacing: -.04em;
+}
+.sec-label {
+  font-family: var(--mono); font-size: .6875rem; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--gold); margin: 0;
+}
+h2 { font-size: clamp(1.7rem, 3.2vw, 2.25rem); font-weight: 300; letter-spacing: -.025em; margin: 0 0 1.1rem; line-height: 1.15; }
+h3 { font-size: 1rem; font-weight: 600; margin: 1.8rem 0 .4rem; }
+
+/* -------------------------------------------------------------- code figs */
+figure.code { margin: 0; border: 1px solid var(--rule); border-radius: .4rem; overflow: hidden; background: var(--code-bg); }
+figure.code + figure.code { margin-top: .8rem; }
+figure.code figcaption {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem;
+  padding: .5rem .9rem; border-bottom: 1px solid var(--rule-soft);
+  font-family: var(--mono); font-size: .6875rem; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--muted); background: var(--panel);
+}
+figure.code figcaption b { color: var(--ink); font-weight: 600; }
+pre { margin: 0; padding: .9rem .9rem; overflow-x: auto; font-size: .8rem; line-height: 1.65; tab-size: 2; }
+pre code { display: block; counter-reset: line; }
+pre .l { display: block; position: relative; padding-left: 2.4rem; min-height: 1.65em; counter-increment: line; }
+pre .l::before {
+  content: counter(line); position: absolute; left: 0; width: 1.7rem;
+  text-align: right; color: var(--muted); opacity: .45; user-select: none; font-size: .95em;
+}
+pre.plain code { counter-reset: none; }
+pre.plain .l { padding-left: 0; }
+pre.plain .l::before { content: none; }
+p code, li code, td code, dd code { background: var(--code-bg); padding: .1em .35em; border-radius: .25rem; font-size: .875em; }
+.tok-com { color: var(--muted); font-style: italic; }
+.tok-str { color: var(--gold); }
+.tok-key { font-weight: 600; }
+
+/* ------------------------------------------------------------ split layout */
+.split { display: grid; gap: 1.4rem; align-items: start; }
+.split > * { min-width: 0; }
+@media (min-width: 68rem) { .split { grid-template-columns: 1.65fr 1fr; } }
+
+.card {
+  background: var(--panel); border: 1px solid var(--rule); border-radius: .4rem;
+  padding: 1.2rem 1.3rem;
+}
+.card h3 { margin-top: 0; }
+.card p { margin: 0 0 .9rem; font-size: .9375rem; color: var(--muted); line-height: 1.55; }
+.card p:last-child { margin-bottom: 0; }
+.card .go { font-family: var(--mono); font-size: .8125rem; display: block; margin-top: .2rem; }
+
+/* ------------------------------------------------------------- file table */
+.files { list-style: none; margin: 0; padding: 0; }
+.files li {
+  display: grid; gap: .15rem .9rem; padding: .7rem 0;
+  grid-template-columns: 8.5rem 1fr 3rem;
+  grid-template-areas: "fn bar num" "fn what num";
+  align-items: center; border-bottom: 1px solid var(--rule-soft);
+}
+.files .fn { grid-area: fn; font-family: var(--mono); font-size: .875rem; }
+.files .what { grid-area: what; font-size: .8125rem; color: var(--muted); }
+.files .num { grid-area: num; font-family: var(--mono); font-size: .875rem; text-align: right; font-variant-numeric: tabular-nums; }
+.files .bar { grid-area: bar; height: .45rem; background: var(--rule-soft); border-radius: 1px; }
+.files .bar::before {
+  content: ""; display: block; height: 100%; border-radius: 1px;
+  width: calc(var(--n) / 151 * 100%); background: var(--gold);
+}
+.files .total {
+  display: flex; justify-content: space-between; border-bottom: 0; padding-top: .9rem;
+  font-family: var(--mono); font-size: .8125rem; color: var(--muted);
+}
+@media (max-width: 30rem) {
+  .files li { grid-template-columns: 1fr 3rem; grid-template-areas: "fn num" "bar bar" "what what"; }
+}
+
+/* --------------------------------------------------------------- api list */
+.api { margin: 0; }
+.api dt { font-family: var(--mono); font-size: .9375rem; margin-top: 1.4rem; color: var(--gold); }
+.api dt:first-child { margin-top: 0; }
+.api dd { margin: .25rem 0 0; font-size: .9375rem; color: var(--muted); line-height: 1.55; }
+
+/* ---------------------------------------------------------------- figures */
+.figures { display: grid; gap: 1px; background: var(--rule-soft); border: 1px solid var(--rule-soft); border-radius: .4rem; overflow: hidden; margin: 0 0 1.6rem; }
+@media (min-width: 40rem) { .figures { grid-template-columns: repeat(4, 1fr); } }
+.figures div { background: var(--bg); padding: 1rem 1.1rem; }
+.figures b { display: block; font-family: var(--mono); font-size: 1.75rem; font-weight: 300; letter-spacing: -.03em; color: var(--gold); line-height: 1.1; }
+.figures span { display: block; font-size: .8125rem; color: var(--muted); line-height: 1.4; margin-top: .35rem; }
+
+/* ----------------------------------------------------------------- tables */
+.table { width: 100%; border-collapse: collapse; font-size: .9375rem; }
+.table th, .table td { text-align: left; padding: .5rem .9rem .5rem 0; border-bottom: 1px solid var(--rule-soft); }
+.table th { font-family: var(--mono); font-weight: 500; font-size: .6875rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.table td.n, .table th.n { text-align: right; padding-right: 0; }
+.table td.n { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.scroll-x { overflow-x: auto; }
+
+/* --------------------------------------------------------------- examples */
+.demos { list-style: none; padding: 0; margin: 0; display: grid; gap: .8rem; }
+@media (min-width: 46rem) { .demos { grid-template-columns: 1fr 1fr; } }
+.demos a {
+  display: block; height: 100%; padding: 1rem 1.1rem; border-radius: .4rem;
+  border: 1px solid var(--rule); text-decoration: none; background: var(--panel);
+}
+.demos a:hover { border-color: var(--gold); }
+.demos strong { display: block; font-weight: 500; margin-bottom: .15rem; }
+.demos .tag { font-family: var(--mono); font-size: .6875rem; color: var(--gold); letter-spacing: .08em; text-transform: uppercase; }
+.demos small { color: var(--muted); font-size: .8125rem; line-height: 1.5; display: block; margin-top: .3rem; }
+
+/* ------------------------------------------------------------------ rules */
+.checks { list-style: none; padding: 0; margin: 0; }
+.checks li { padding: .6rem 0 .6rem 2.2rem; border-bottom: 1px solid var(--rule-soft); position: relative; font-size: .9375rem; }
+.checks li:last-child { border-bottom: 0; }
+.checks li::before {
+  content: counter(rule, decimal-leading-zero); counter-increment: rule;
+  position: absolute; left: 0; top: .65rem; font-family: var(--mono);
+  font-size: .6875rem; color: var(--gold);
+}
+.checks { counter-reset: rule; }
+.checks.plain li::before { content: "—"; font-size: .875rem; top: .5rem; }
+
+footer { padding: 3rem 0 4rem; border-top: 1px solid var(--rule); font-size: .875rem; color: var(--muted); }
+footer p { margin: 0 0 .6rem; max-width: 42rem; }
+footer .sig { font-family: var(--mono); font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; margin-top: 1.6rem; }
+</style>
+</head>
+<body>
+
+<div class="ruler"></div>
+
+<div class="wrap">
+  <header class="top">
+    <span class="name">auril.js</span>
+    <nav>
+      <a href="examples/">Examples</a>
+      <a href="https://github.com/nogo/auril/blob/main/FRAMEWORK.md">Documentation</a>
+      <a href="https://github.com/nogo/auril/blob/main/PERFORMANCE.md">Benchmarks</a>
+      <a href="https://github.com/nogo/auril">GitHub</a>
+    </nav>
+  </header>
+
+  <div class="hero">
+    <div>
+      <h1>auril<span class="dot">.js</span></h1>
+      <p class="tagline">A no-build frontend kernel for personal apps.</p>
+      <p class="sub">
+        Escaped HTML templates, DOM morphing, custom elements, one store and a
+        Navigation API router. <strong>No npm, no bundler, no transpilation, no
+        JSX, no virtual DOM.</strong> The files in <code>src/</code> are the
+        files that run.
+      </p>
+      <ul class="pillars">
+        <li>No build step</li>
+        <li>Small by rule</li>
+        <li>Measured, not claimed</li>
+      </ul>
+      <p class="cta">
+        <a class="btn primary" href="examples/">Run the examples →</a>
+        <a class="btn" href="https://github.com/nogo/auril">Source on GitHub</a>
+      </p>
+    </div>
+
+    <figure class="meter">
+      <figcaption class="meter-head">
+        <span>Kernel size</span>
+        <span>enforced in CI</span>
+      </figcaption>
+      <p class="meter-figure"><b>504</b> <span>of a 600-line budget</span></p>
+      <div class="meter-bar" role="img" aria-label="504 of 600 lines used across eight files, leaving 96 lines of headroom">
+        <span style="--n:151" title="element.js — 151 lines"></span>
+        <span style="--n:142; opacity:.92" title="store.js — 142 lines"></span>
+        <span style="--n:100; opacity:.84" title="router.js — 100 lines"></span>
+        <span style="--n:50; opacity:.76" title="html.js — 50 lines"></span>
+        <span style="--n:26; opacity:.68" title="morph.js — 26 lines"></span>
+        <span style="--n:18; opacity:.6" title="delegate.js — 18 lines"></span>
+        <span style="--n:10; opacity:.52" title="dev.js — 10 lines"></span>
+        <span style="--n:7; opacity:.44" title="index.js — 7 lines"></span>
+        <span class="headroom" style="--n:96" title="96 lines of remaining headroom"></span>
+      </div>
+      <div class="meter-ticks" aria-hidden="true"></div>
+      <div class="meter-scale" aria-hidden="true"><span>0</span><span>600 lines</span></div>
+      <p class="meter-note">
+        Eight files, and the hatched remainder is all the room left. To cross
+        the budget, something has to be deleted first — the check runs on every
+        push, so the number cannot drift.
+      </p>
+    </figure>
+  </div>
+</div>
+
+<main>
+<section id="app">
+  <div class="wrap sec">
+    <div class="sec-head"><p class="sec-num">01</p><p class="sec-label">A complete app</p></div>
+    <div class="sec-body">
+      <h2>A whole app in two files, no build step</h2>
+      <div class="prose" style="margin-bottom:1.6rem">
+        <p class="muted">
+          No config, no entry-point ceremony, no compiler. One HTML page and one
+          ES module, served exactly as written.
+        </p>
+      </div>
+
+      <div class="split">
+        <div>
+          <figure class="code">
+            <figcaption><b>app.js</b><span>plain ES module</span></figcaption>
+            <pre><code class="js"><span class="l"><span class="tok-key">import</span> { html, AurilElement, Store } <span class="tok-key">from</span> <span class="tok-str">'./auril/index.js'</span>;</span><span class="l"></span><span class="l"><span class="tok-key">const</span> store = <span class="tok-key">new</span> Store({ count: 0 }, { persist: [<span class="tok-str">'count'</span>] });</span><span class="l">AurilElement.store = store;</span><span class="l"></span><span class="l"><span class="tok-key">class</span> CounterApp <span class="tok-key">extends</span> AurilElement {</span><span class="l">  onConnect() {</span><span class="l">    this.watch(); <span class="tok-com">// re-render on any store change</span></span><span class="l">    this.delegate(<span class="tok-str">'click'</span>, <span class="tok-str">'[data-step]'</span>, (_, el) =&gt; {</span><span class="l">      <span class="tok-key">const</span> step = Number(el.getAttribute(<span class="tok-str">'data-step'</span>));</span><span class="l">      store.set((s) =&gt; ({ count: s.count + step }));</span><span class="l">    });</span><span class="l">  }</span><span class="l"></span><span class="l">  render() {</span><span class="l">    <span class="tok-key">return</span> html<span class="tok-str">`</span></span><span class="l"><span class="tok-str">      &lt;button data-step="-1" aria-label="Decrement"&gt;−&lt;/button&gt;</span></span><span class="l"><span class="tok-str">      &lt;output&gt;${store.state.count}&lt;/output&gt;</span></span><span class="l"><span class="tok-str">      &lt;button data-step="1" aria-label="Increment"&gt;+&lt;/button&gt;`</span>;</span><span class="l">  }</span><span class="l">}</span><span class="l"></span><span class="l">customElements.define(<span class="tok-str">'counter-app'</span>, CounterApp);</span></code></pre>
+          </figure>
+          <figure class="code">
+            <figcaption><b>index.html</b><span>the whole page</span></figcaption>
+            <pre class="plain"><code class="html"><span class="l">&lt;counter-app&gt;&lt;/counter-app&gt;</span><span class="l">&lt;script type="module" src="./app.js"&gt;&lt;/script&gt;</span></code></pre>
+          </figure>
+        </div>
+
+        <div class="card">
+          <h3>That is the entire program</h3>
+          <p>
+            The count persists to <code>localStorage</code> and syncs across
+            browser tabs, because <code>Store</code> listens for
+            <code>storage</code> events. Nothing else is required: no bundler
+            entry, no config file, no compile step, no <code>node_modules</code>.
+          </p>
+          <p>
+            What you read above is what the browser executes. Set a breakpoint
+            and the debugger shows this file — not a transpiled approximation of it.
+          </p>
+          <p>
+            <a class="go" href="examples/counter/">Run this counter →</a>
+            <a class="go" href="examples/todos/">See the full todo app →</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="examples">
+  <div class="wrap sec">
+    <div class="sec-head"><p class="sec-num">02</p><p class="sec-label">Examples</p></div>
+    <div class="sec-body">
+      <h2>Six live demos, each a few dozen lines</h2>
+      <div class="prose">
+        <p class="muted">
+          Every demo runs straight from source with no build step — open devtools
+          on any of them and you are looking at the whole app.
+          <strong>Start with the todo app</strong>: type in its search box and
+          watch the list re-render on every keystroke while your cursor,
+          selection and scroll position stay exactly where they were. That is
+          <code>morph()</code> doing its one job.
+        </p>
+      </div>
+      <ul class="demos" style="margin-top:1.5rem">
+        <li><a href="examples/todos/">
+          <span class="tag">Start here</span>
+          <strong>Todos</strong>
+          <small>The canonical app: CRUD, inline editing, filters, search-as-you-type, persistence — every kernel piece in ~180 lines.</small>
+        </a></li>
+        <li><a href="examples/counter/">
+          <span class="tag">Smallest</span>
+          <strong>Counter</strong>
+          <small>One store, one component, persisted across reloads and synced across browser tabs.</small>
+        </a></li>
+        <li><a href="examples/fetch/">
+          <span class="tag">Async</span>
+          <strong>Async search</strong>
+          <small>Loading, error and retry states, request cancellation, and the <code>api.js</code> seam — all component-local state.</small>
+        </a></li>
+        <li><a href="examples/router/">
+          <span class="tag">Navigation API</span>
+          <strong>Router</strong>
+          <small>Routing with params, deep links, back/forward, and view transitions between views.</small>
+        </a></li>
+        <li><a href="examples/animation/">
+          <span class="tag">View Transitions</span>
+          <strong>Animation</strong>
+          <small>List shuffle, sort, add and remove — CSS pairs the cards, morph moves them.</small>
+        </a></li>
+        <li><a href="examples/dbmonster/">
+          <span class="tag">Stress test</span>
+          <strong>DBMonster</strong>
+          <small>The classic repaint benchmark, deliberately far over the 250-node ceiling. A measurement, not a pattern to copy.</small>
+        </a></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="why">
+  <div class="wrap sec">
+    <div class="sec-head"><p class="sec-num">03</p><p class="sec-label">Why</p></div>
+    <div class="sec-body">
+      <h2>Personal apps rarely need a framework stack</h2>
+      <div class="prose">
+        <p>
+          They need a few boring pieces: safe HTML string composition,
+          non-destructive DOM updates, custom elements with lifecycle cleanup,
+          one shared store, a small router, event delegation, and debug logging
+          when you ask for it. auril.js is those pieces and then it stops.
+        </p>
+        <p>
+          Everything app-specific stays in the app. There is no registry and no
+          auto-update: you copy the kernel into your project, pin it, and upgrade
+          deliberately by diffing — like any dependency bump, except you can read
+          all of it in an afternoon.
+        </p>
+        <h3>The six rules that keep it small</h3>
+        <p class="muted">
+          Every personal framework dies the same way: by growing into the bloat
+          it was built to escape. These rules are as much the framework as the
+          code is.
+        </p>
+      </div>
+      <ul class="checks" style="margin-top:1rem">
+        <li><strong>Two-app rule.</strong> Nothing enters the kernel until at least two apps need it <em>today</em>. Not hypothetically.</li>
+        <li><strong>Hard budget: 600 lines</strong> across top-level <code>src/*.js</code>. To cross it, delete something first — CI fails the build otherwise.</li>
+        <li><strong>Platform first.</strong> <code>&lt;dialog&gt;</code>, <code>popover</code>, <code>:has()</code>, form validation, View Transitions — reach for those before writing JavaScript.</li>
+        <li><strong>Near-frozen.</strong> Bug fixes always welcome. For features, the default answer is no.</li>
+        <li><strong>Source-only.</strong> No minified artifact ships. If an app needs minification, that app owns the build step.</li>
+        <li><strong>The docs are the contract.</strong> Every kernel change updates <code>FRAMEWORK.md</code> in the same commit. Undocumented behaviour is not part of the framework.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="kernel">
+  <div class="wrap sec">
+    <div class="sec-head"><p class="sec-num">04</p><p class="sec-label">The kernel</p></div>
+    <div class="sec-body">
+      <h2>Eight files, readable in one sitting</h2>
+      <div class="split" style="margin-top:1.4rem">
+        <ol class="files">
+          <li style="--n:151"><span class="fn">element.js</span><span class="bar"></span><span class="what">AurilElement base class</span><span class="num">151</span></li>
+          <li style="--n:142"><span class="fn">store.js</span><span class="bar"></span><span class="what">observable store</span><span class="num">142</span></li>
+          <li style="--n:100"><span class="fn">router.js</span><span class="bar"></span><span class="what">Navigation API router</span><span class="num">100</span></li>
+          <li style="--n:50"><span class="fn">html.js</span><span class="bar"></span><span class="what">escaped template tag</span><span class="num">50</span></li>
+          <li style="--n:26"><span class="fn">morph.js</span><span class="bar"></span><span class="what">Idiomorph wrapper</span><span class="num">26</span></li>
+          <li style="--n:18"><span class="fn">delegate.js</span><span class="bar"></span><span class="what">event delegation</span><span class="num">18</span></li>
+          <li style="--n:10"><span class="fn">dev.js</span><span class="bar"></span><span class="what">opt-in debug logging</span><span class="num">10</span></li>
+          <li style="--n:7"><span class="fn">index.js</span><span class="bar"></span><span class="what">public exports</span><span class="num">7</span></li>
+          <li class="total"><span>8 files · one vendored dependency</span><span>504 / 600</span></li>
+        </ol>
+
+        <dl class="api">
+          <dt>html``</dt>
+          <dd>A tagged template returning an HTML string. Values are escaped by default, arrays join, nested templates compose without double-escaping. <code>raw()</code> marks trusted markup — never user input.</dd>
+          <dt>morph()</dt>
+          <dd>Updates an element's children to match an HTML string while preserving focus, selection, scroll and node identity. Idiomorph underneath, using <code>moveBefore()</code> where available, so reorders do not restart animations or remount nested components.</dd>
+          <dt>AurilElement</dt>
+          <dd>A light-DOM custom element base. <code>on()</code> and <code>delegate()</code> auto-remove on disconnect, <code>watch()</code> subscribes to the store, and <code>update()</code> morphs — skipping the work entirely when the rendered string is unchanged.</dd>
+          <dt>Store</dt>
+          <dd>One observable state container. Updates batch per microtask, selected keys persist to <code>localStorage</code>, and persisted slices sync across browser tabs.</dd>
+          <dt>Router</dt>
+          <dd>Built on the Navigation API and <code>URLPattern</code> — no click hijacking, no <code>popstate</code> juggling. Route changes are wrapped in a View Transition.</dd>
+          <dt>delegate(), dev</dt>
+          <dd>Event delegation from a root element, and <code>[auril]</code>-prefixed debug logging you switch on with <code>?auril-dev</code> in the URL.</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="performance">
+  <div class="wrap sec">
+    <div class="sec-head"><p class="sec-num">05</p><p class="sec-label">What it costs</p></div>
+    <div class="sec-body">
+      <h2>DOM morphing vs innerHTML, measured</h2>
+
+      <div class="figures">
+        <div><b>5.6×</b><span>morph vs <code>innerHTML</code> at 250 nodes</span></div>
+        <div><b>2–3 %</b><span>of an update spent building the string</span></div>
+        <div><b>~250</b><span>node ceiling per component</span></div>
+        <div><b>1.4 µs</b><span>tax per idle subscribed component</span></div>
+      </div>
+
+      <div class="prose" style="margin-bottom:1.2rem">
+        <p class="muted">
+          p50 milliseconds per operation, Chrome under a <strong>4× CPU throttle</strong>
+          (a mid-range phone, not a laptop), kernel time only — layout and paint
+          excluded. Reproduce with <code>bun run bench</code>.
+        </p>
+      </div>
+
+      <div class="scroll-x" style="max-width:46rem">
+        <table class="table">
+          <thead>
+            <tr><th>Nodes</th><th class="n">render</th><th class="n">morph</th><th class="n">innerHTML</th><th class="n">morph ÷ innerHTML</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>250</td><td class="n">0.105</td><td class="n">6.2</td><td class="n">1.10</td><td class="n">5.6×</td></tr>
+            <tr><td>1000</td><td class="n">0.475</td><td class="n">31.9</td><td class="n">4.80</td><td class="n">6.6×</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="prose" style="margin-top:1.4rem">
+        <p>
+          <strong>Yes — morphing costs 5–7× <code>innerHTML</code>.</strong> It does
+          everything <code>innerHTML</code> does and then builds id maps and diffs.
+          That multiplier buys node identity and focus preservation, which
+          <code>innerHTML</code> cannot do at any speed. The benchmark asserts it:
+          after one update, morph keeps both; <code>innerHTML</code> loses both.
+        </p>
+        <p>
+          Building the string is free. The cost is applying it, and it tracks
+          <em>tree size, not change size</em>: changing one row costs 84–97 % of
+          changing every row. So the rule that falls out of the numbers is a
+          single convention — <strong>keep one component's rendered tree under
+          ~250 nodes</strong> and split larger views into several components with
+          scoped <code>watch(selector, cb)</code>. Fan-out is cheap enough to make
+          that trade.
+        </p>
+        <p class="muted">
+          Known limits: Chrome only, one machine, layout and paint excluded,
+          run-to-run spread ~15 %. All of it — including the assumptions that
+          turned out to be wrong — is written down in
+          <a href="https://github.com/nogo/auril/blob/main/PERFORMANCE.md">PERFORMANCE.md</a>.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="install">
+  <div class="wrap sec">
+    <div class="sec-head"><p class="sec-num">06</p><p class="sec-label">Get it</p></div>
+    <div class="sec-body">
+      <h2>You do not install auril.js — you copy it</h2>
+      <div class="prose" style="margin-bottom:1.4rem">
+        <p class="muted">
+          The kernel is vendored into each app deliberately: no registry, no
+          transitive dependencies, no surprise upgrade.
+        </p>
+      </div>
+
+      <div class="split">
+        <div>
+          <figure class="code">
+            <figcaption><b>vendor it</b><span>once per app</span></figcaption>
+            <pre class="plain"><code class="sh"><span class="l">git clone https:<span class="tok-com">//github.com/nogo/auril</span></span><span class="l">cd auril</span><span class="l">./vendor.sh ../my-app/web/auril</span></code></pre>
+          </figure>
+          <figure class="code">
+            <figcaption><b>import it</b><span>relative path, no resolver</span></figcaption>
+            <pre class="plain"><code class="js"><span class="l"><span class="tok-key">import</span> { html, AurilElement, Store } <span class="tok-key">from</span> <span class="tok-str">'./auril/index.js'</span>;</span></code></pre>
+          </figure>
+          <figure class="code">
+            <figcaption><b>work on the kernel</b><span>live reload, SPA fallback</span></figcaption>
+            <pre class="plain"><code class="sh"><span class="l">bun serve.js   <span class="tok-com"># http://localhost:8000/</span></span><span class="l">bun test       <span class="tok-com"># happy-dom unit tests</span></span><span class="l">bun run bench  <span class="tok-com"># browser benchmarks</span></span></code></pre>
+          </figure>
+        </div>
+
+        <div class="card">
+          <h3>Types without a build</h3>
+          <p>
+            Type annotations live in JSDoc comments inside the <code>.js</code>
+            files, so any TypeScript-aware editor gives autocomplete and
+            shape-checking with nothing to compile. <code>Store</code> is generic:
+            its state shape flows from the defaults you pass.
+          </p>
+          <h3>Debugging</h3>
+          <p>
+            Add <code>?auril-dev</code> to any URL for <code>[auril]</code>-prefixed
+            logging of connects, updates, store patches and route resolutions —
+            plus live stores on <code>globalThis.__auril</code> for poking from
+            the console.
+          </p>
+          <p>
+            <a class="go" href="https://github.com/nogo/auril/blob/main/FRAMEWORK.md">Read the full contract →</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="limits">
+  <div class="wrap sec">
+    <div class="sec-head"><p class="sec-num">07</p><p class="sec-label">Honest limits</p></div>
+    <div class="sec-body">
+      <h2>When auril.js is the wrong tool</h2>
+      <ul class="checks plain" style="max-width:44rem">
+        <li><strong>You need old browsers.</strong> <code>Router</code> requires the Navigation API and <code>URLPattern</code> — Baseline newly available 2026 (Chrome 102+, Firefox 147+, Safari 26.2+), with no fallback.</li>
+        <li><strong>You need server rendering.</strong> auril renders in the browser. There is no SSR story and none is planned.</li>
+        <li><strong>You have views that genuinely cannot be split under ~250 nodes.</strong> Morphing walks the whole tree every update; a 1000-node component pays ~30 ms per update under throttle.</li>
+        <li><strong>You are a team that needs an ecosystem.</strong> No plugins, no devtools extension, no Stack Overflow answers. The compensation is that the whole thing is 504 lines you can read.</li>
+        <li><strong>You want semver and a registry.</strong> Vendoring is the distribution model, on purpose.</li>
+        <li><strong>You want a framework that grows with you.</strong> This one is near-frozen by design. If your app outgrows it, the exit is the same as the entry: plain ES modules over web standards, so you leave with your code intact.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>
+      MIT licensed. <code>src/vendor/idiomorph.js</code> is
+      <a href="https://github.com/bigskysoftware/idiomorph">Idiomorph</a> v0.7.4
+      under Zero-Clause BSD — the one dependency, vendored and pinned.
+    </p>
+    <p>
+      This page ships no JavaScript at all: static HTML and one stylesheet. The
+      framework runs on the <a href="examples/">examples</a>, where you can see
+      it work.
+    </p>
+    <p class="sig"><a href="https://github.com/nogo/auril">github.com/nogo/auril</a></p>
+  </div>
+</footer>
+
+<div class="ruler"></div>
+
+</body>
+</html>

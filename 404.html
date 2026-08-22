@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Not found — auril.js</title>
+<style>
+  :root { color-scheme: light dark; --accent: #9a4a13; }
+  @media (prefers-color-scheme: dark) { :root { --accent: #e9a15e; } }
+  body { font-family: system-ui, sans-serif; max-width: 34rem; margin: 6rem auto; padding: 0 1.25rem; line-height: 1.6; }
+  h1 { font-weight: 200; font-size: 3rem; margin: 0 0 .5rem; opacity: .5; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .875em; }
+  a { color: inherit; text-underline-offset: .18em; }
+  a:hover { text-decoration-color: var(--accent); }
+  p { margin: 0 0 1rem; }
+  .hint { border-left: 2px solid var(--accent); padding-left: 1rem; }
+</style>
+</head>
+<body>
+  <h1>404</h1>
+  <p>Nothing at <code id="path"></code>.</p>
+  <p class="hint" id="hint" hidden>
+    That is a deep link into the <a id="demo" href="/examples/router/">router demo</a>.
+    GitHub Pages has no SPA fallback, so a refresh on a routed URL lands here instead
+    of the app shell. Clicking through from the demo works — as does running it locally
+    with <code>bun serve.js</code>, which does have the fallback.
+  </p>
+  <p><a href="/">auril.js</a> · <a href="/examples/">examples</a> · <a href="https://github.com/nogo/auril">GitHub</a></p>
+  <script>
+    document.getElementById('path').textContent = location.pathname;
+    // Links here are root-absolute, but GitHub Pages serves a project repo under
+    // /<repo>/ while a custom domain serves it at the root. A path containing
+    // /examples/ names the mount point outright; otherwise fall back to the
+    // github.io shape, where the first segment is the repo.
+    const mount = location.pathname.match(/^(.*?)\/examples\//);
+    const repo = location.hostname.endsWith('github.io') ? location.pathname.split('/')[1] : '';
+    const prefix = mount ? mount[1] : repo ? '/' + repo : '';
+    for (const a of document.querySelectorAll('a[href^="/"]')) a.href = prefix + a.getAttribute('href');
+    if (/\/examples\/router\//.test(location.pathname)) document.getElementById('hint').hidden = false;
+  </script>
+</body>
+</html>

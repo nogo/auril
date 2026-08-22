@@ -3,72 +3,128 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>auril.js examples</title>
+  <title>Examples — auril.js</title>
+  <meta name="description" content="Six live auril.js demos running straight from source, no build step: todos, counter, async search, router, View Transition animation, DBMonster.">
+  <link rel="canonical" href="https://nogo.github.io/auril/examples/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="auril.js">
+  <meta property="og:url" content="https://nogo.github.io/auril/examples/">
+  <meta property="og:title" content="Examples — auril.js">
+  <meta property="og:description" content="Six live auril.js demos running straight from source with no build step.">
+  <meta property="og:image" content="https://nogo.github.io/auril/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://nogo.github.io/auril/og.png">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%239a4a13'/><text x='16' y='23' font-family='system-ui' font-size='20' font-weight='300' fill='%23fff' text-anchor='middle'>a</text></svg>">
   <style>
-    :root { color-scheme: light dark; }
+    /* Same tokens as the site's landing page, so the gallery reads as one place. */
+    :root {
+      color-scheme: light dark;
+      --bg: #faf8f4; --panel: #fff; --ink: #191612; --muted: #6d675e; --gold: #9a5313;
+      --rule: color-mix(in srgb, var(--ink) 14%, transparent);
+      --rule-soft: color-mix(in srgb, var(--ink) 7%, transparent);
+      --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #121110; --panel: #191816; --ink: #ece8e0; --muted: #948d83; --gold: #e6a45f; }
+    }
+    * { box-sizing: border-box; }
     body {
-      font-family: system-ui, sans-serif;
-      max-width: 34rem;
-      margin: 3rem auto;
-      padding: 0 1rem;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg); color: var(--ink);
+      max-width: 40rem; margin: 0 auto; padding: 2.75rem 1.25rem 4rem;
+      line-height: 1.6;
     }
-    h1 { font-weight: 200; font-size: 2.5rem; margin: 0 0 .25rem; opacity: .5; }
-    .demos { list-style: none; padding: 0; display: grid; gap: .6rem; }
+    /* Fixed rather than full-bleed: a negative-margin bleed inside a centred,
+       max-width body would push the page sideways. */
+    .ruler {
+      position: fixed; inset: 0 0 auto 0; height: 4px; z-index: 1;
+      background: repeating-linear-gradient(to right, var(--gold) 0 1px, transparent 1px 11px);
+      opacity: .4;
+    }
+    a { color: inherit; text-underline-offset: .18em; }
+    a:hover { text-decoration-color: var(--gold); }
+    .home { font-family: var(--mono); font-size: .75rem; letter-spacing: .1em;
+      text-transform: uppercase; margin: 0 0 2.5rem; }
+    .home a { color: var(--muted); text-decoration: none; }
+    .home a:hover { color: var(--gold); }
+    .label { font-family: var(--mono); font-size: .6875rem; letter-spacing: .14em;
+      text-transform: uppercase; color: var(--gold); margin: 0 0 .6rem; }
+    h1 { font-weight: 200; font-size: clamp(2.2rem, 7vw, 3rem); letter-spacing: -.035em;
+      margin: 0 0 .8rem; line-height: 1; }
+    .intro { color: var(--muted); font-size: .9375rem; margin: 0 0 2rem; }
+    .demos { list-style: none; padding: 0; margin: 0; display: grid; gap: .8rem; }
     .demos a {
-      display: block; padding: .8rem 1rem; border-radius: .5rem;
-      border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
-      text-decoration: none; color: inherit;
+      display: block; padding: 1rem 1.1rem; border-radius: .4rem; background: var(--panel);
+      border: 1px solid var(--rule); text-decoration: none; color: inherit;
     }
-    .demos a:hover { border-color: color-mix(in srgb, currentColor 45%, transparent); }
-    .demos strong { display: block; }
-    .demos small { opacity: .6; }
+    .demos a:hover { border-color: var(--gold); }
+    .demos .tag { font-family: var(--mono); font-size: .6875rem; color: var(--gold);
+      letter-spacing: .08em; text-transform: uppercase; }
+    .demos strong { display: block; font-weight: 500; margin-bottom: .1rem; }
+    .demos small { display: block; color: var(--muted); font-size: .8125rem; line-height: 1.5; }
     [popover] {
-      max-width: 26rem; padding: 1rem 1.2rem; border-radius: .5rem;
-      border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+      max-width: 28rem; padding: 1.1rem 1.3rem; border-radius: .4rem; font-size: .9375rem;
+      background: var(--panel); color: var(--ink); border: 1px solid var(--rule);
     }
-    .about-btn { font: inherit; background: none; border: 0; color: inherit;
-      text-decoration: underline; cursor: pointer; padding: 0; opacity: .7; }
+    [popover]::backdrop { background: color-mix(in srgb, var(--ink) 30%, transparent); }
+    code { font-family: var(--mono); font-size: .875em; }
+    .about-btn { font: inherit; font-size: .9375rem; background: none; border: 0; color: var(--gold);
+      text-decoration: underline; cursor: pointer; padding: 0; }
+    footer { margin-top: 2.5rem; font-size: .8125rem; color: var(--muted); }
   </style>
 </head>
 <body>
-  <h1>auril.js examples</h1>
-  <p>
-    Each demo is a few dozen lines of plain ES modules — no build step.
-    <button class="about-btn" popovertarget="about">What is this?</button>
+  <div class="ruler"></div>
+  <p class="home"><a href="../">← auril.js</a></p>
+  <p class="label">Examples</p>
+  <h1>Six demos, no build step</h1>
+  <p class="intro">
+    Each one is a few dozen lines of plain ES modules, served exactly as
+    written. <button class="about-btn" popovertarget="about">What is auril.js?</button>
   </p>
   <!-- This "modal" is the platform-first principle in action: a native
        popover, zero JavaScript. -->
   <div id="about" popover>
     <strong>auril.js</strong> is a no-build frontend kernel for personal apps:
     escaped <code>html``</code> templates, DOM morphing, custom elements, one
-    store, a Navigation-API router — 430 lines you own. This popover needs no
+    store, a Navigation-API router — 504 lines you own. This popover needs no
     JS at all: <code>popovertarget</code> is enough.
   </div>
   <ul class="demos">
-    <li><a href="/examples/todos/">
+    <li><a href="todos/">
+      <span class="tag">Start here</span>
       <strong>Todos</strong>
       <small>The canonical app: CRUD, inline editing, filters, search-as-you-type, persistence — every kernel piece.</small>
     </a></li>
-    <li><a href="/examples/counter/">
+    <li><a href="counter/">
+      <span class="tag">Smallest</span>
       <strong>Counter</strong>
       <small>The smallest possible app: one store, one component, persisted across reloads.</small>
     </a></li>
-    <li><a href="/examples/fetch/">
+    <li><a href="fetch/">
+      <span class="tag">Async</span>
       <strong>Async search</strong>
       <small>Loading / error / retry states, request cancellation, and the api.js seam — all component-local state.</small>
     </a></li>
-    <li><a href="/examples/router/">
+    <li><a href="router/">
+      <span class="tag">Navigation API</span>
       <strong>Router</strong>
       <small>Navigation-API routing with params, deep links, back/forward, and view transitions between views.</small>
     </a></li>
-    <li><a href="/examples/animation/">
+    <li><a href="animation/">
+      <span class="tag">View Transitions</span>
       <strong>Animation</strong>
       <small>List shuffle/sort/add/remove animated by View Transitions — CSS pairs the cards, morph moves them.</small>
     </a></li>
-    <li><a href="/examples/dbmonster/">
+    <li><a href="dbmonster/">
+      <span class="tag">Stress test</span>
       <strong>DBMonster</strong>
       <small>The classic repaint stress test: full table re-render + morph every animation frame, with FPS counter. Deliberately far over the ~250-node per-component ceiling — a measurement, not a pattern to copy.</small>
     </a></li>
   </ul>
+  <footer>
+    <p>Add <code>?auril-dev</code> to any demo URL for debug logging.
+       <a href="https://github.com/nogo/auril">Source on GitHub</a>.</p>
+  </footer>
 </body>
 </html>
