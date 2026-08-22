@@ -18,7 +18,7 @@ bloat it was built to escape.
    need it *today*. Until then it lives in the app that wants it.
 2. **Hard size budget: 600 lines** for the kernel (top-level `src/*.js`,
    excluding `src/vendor/`, `test/`, `examples/`, `bench/` — check:
-   `wc -l src/*.js`; currently 495).
+   `wc -l src/*.js`; currently 504).
    To cross it, delete something first. No subfolders inside `src/` — that
    is how creep starts.
 3. **Near-frozen.** Bug fixes are always welcome. Features must pass the
@@ -78,12 +78,15 @@ Because `0` renders, guard lists with a real boolean: `items.length > 0 && …`.
 
 Morphs `target`'s children to match an HTML string (Idiomorph,
 `morphStyle: 'innerHTML'`). Non-destructive: preserves focus, selection,
-scroll, and node identity. The **focused element's value is never
-overwritten** (`ignoreActiveValue: true` by default): re-rendering on every
-keystroke can't wipe text, jump the cursor, or break IME composition; the
-value resyncs from markup once the input blurs. Pass
-`ignoreActiveValue: false` if you must programmatically set a focused
-input's value through a morph. Two rules:
+scroll, and node identity. The **value of the field being typed into is never
+overwritten**: re-rendering on every keystroke can't wipe text, jump the
+cursor, or break IME composition; the value resyncs from markup once the input
+blurs. `ignoreActiveValue` is passed to Idiomorph **only while an input,
+textarea or contenteditable holds focus**, because it skips the focused
+element's whole subtree rather than just its value — left on unconditionally,
+a focused `<button>` keeps the label it had before the click that changed it.
+Force it either way with an explicit `ignoreActiveValue` in `options`. Two
+rules:
 
 - Give list items **stable `id` attributes** (`id="tx-42"`) so reorders pair
   nodes correctly.
@@ -394,3 +397,11 @@ kernel piece and the local-state convention in ~180 lines.
   keys whose value actually changed. `` html`` `` brands trusted markup with
   `Symbol.for('auril.raw')`. Added `src/vendor/idiomorph.d.ts` and `bench/`.
   Kernel: 495/600 lines.
+- **Kernel, 2026-08 (fix)**: `morph()` no longer asks for `ignoreActiveValue`
+  unconditionally. Idiomorph skips the *whole subtree* of `document.activeElement`
+  under that flag, so any control that relabels itself on click — a toggle, an
+  effort cycle, a two-tap delete confirmation — kept its stale text until focus
+  moved elsewhere, while the write behind it had already landed. It is now asked
+  for only when an input, textarea or contenteditable is focused, which is the
+  only case that has a value to protect. Two tests in `test/element.test.js`
+  cover both halves. Kernel: 504/600 lines.

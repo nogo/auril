@@ -109,6 +109,35 @@ test('update() skips the morph when render() output is unchanged', () => {
   expect(el.querySelector('p.x')?.textContent).toBe('changed');
 });
 
+test('update() refreshes a focused button — a label is not a value', () => {
+  const el = create({ label: 'off', render() { return `<button class="t">${this.label}</button>`; } });
+  document.body.append(el);
+  const button = /** @type {HTMLButtonElement} */ (el.querySelector('button.t'));
+  button.focus();
+  expect(document.activeElement).toBe(button);
+
+  el.label = 'on';
+  el.update(); // a toggle that relabels itself is the common case; it must not go stale
+  expect(el.querySelector('button.t')?.textContent).toBe('on');
+});
+
+test('update() leaves the value of the input being typed into alone', () => {
+  const el = create({ value: 'a', render() { return `<input class="q" value="${this.value}">`; } });
+  document.body.append(el);
+  const input = /** @type {HTMLInputElement} */ (el.querySelector('input.q'));
+  input.focus();
+  input.value = 'half-typed';
+
+  el.value = 'b';
+  el.update();
+  expect(input.value).toBe('half-typed'); // focused: the keystrokes win
+
+  input.blur();
+  el.value = 'c';
+  el.update();
+  expect(/** @type {HTMLInputElement} */ (el.querySelector('input.q')).value).toBe('c'); // blurred: markup wins
+});
+
 test('update() morphs fresh after reconnect', () => {
   const el = create({ render() { return '<p class="x">hi</p>'; } });
   document.body.append(el);
