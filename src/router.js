@@ -15,7 +15,8 @@ const navigationImpl = /** @type {any} */ (globalThis).navigation;
  * Client-side router built on the Navigation API and URLPattern (':param' and
  * '*' syntax). One `navigate` listener intercepts same-origin navigations —
  * link clicks, back/forward, and go(). Intercepted route changes are wrapped in
- * a View Transition when supported; the initial resolve in start() is not.
+ * a View Transition when supported, unless constructed with
+ * `{ viewTransitions: false }`; the initial resolve in start() is not.
  */
 export class Router {
   /** @type {{ pattern: any, handler: RouteHandler }[]} */
@@ -23,6 +24,16 @@ export class Router {
   /** @type {((url: URL) => void) | null} */
   #notFound = null;
   #started = false;
+  #viewTransitions;
+
+  /**
+   * Pass `viewTransitions: false` when every navigation must apply at once:
+   * while a View Transition runs, clicks don't reach the page.
+   * @param {{ viewTransitions?: boolean }} [options]
+   */
+  constructor({ viewTransitions = true } = {}) {
+    this.#viewTransitions = viewTransitions;
+  }
 
   /**
    * route('/blog/:slug/comments/:year', ({ slug, year }) => ...) — chainable.
@@ -83,7 +94,7 @@ export class Router {
   }
 
   /**
-   * Run the route handler, cross-faded when the browser supports it.
+   * Run the route handler, cross-faded when enabled and the browser supports it.
    * Returns a promise that settles once the DOM is updated — startViewTransition
    * invokes its callback in a *later* frame, so returning nothing would let the
    * Navigation API finish the navigation (and restore scroll, reset focus)
@@ -91,7 +102,7 @@ export class Router {
    * @param {() => void} apply @returns {Promise<void>}
    */
   #transition(apply) {
-    if (!document.startViewTransition) {
+    if (!this.#viewTransitions || !document.startViewTransition) {
       apply();
       return Promise.resolve();
     }

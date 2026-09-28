@@ -18,7 +18,7 @@ bloat it was built to escape.
    need it *today*. Until then it lives in the app that wants it.
 2. **Hard size budget: 600 lines** for the kernel (top-level `src/*.js`,
    excluding `src/vendor/`, `test/`, `examples/`, `bench/` — check:
-   `wc -l src/*.js`; currently 504).
+   `wc -l src/*.js`; currently 515).
    To cross it, delete something first. No subfolders inside `src/` — that
    is how creep starts.
 3. **Near-frozen.** Bug fixes are always welcome. Features must pass the
@@ -178,7 +178,7 @@ synchronous notification guarantees.
 Client-side router built on the **Navigation API** and **URLPattern**
 (`:param` and `*` syntax) — both Baseline newly available 2026 (Chrome 102+,
 Firefox 147+, Safari 26.2+); no fallback. Wraps route changes in a View
-Transition when supported.
+Transition when supported, unless constructed with `viewTransitions: false`.
 
 ```js
 new Router()
@@ -208,6 +208,11 @@ the intercept handler awaits it — `startViewTransition` runs its callback in a
 API restore scroll and reset focus against the pre-update DOM. The initial
 resolve in `start()` runs bare: a transition there would cross-fade from a blank
 page and cost a frame before first paint.
+
+`new Router({ viewTransitions: false })` applies every route change directly,
+without `startViewTransition`; the option defaults to `true`. Reach for it when
+no navigation may be lost: while a View Transition runs, clicks don't reach the
+page, and `::view-transition { pointer-events: none }` does not change that.
 
 ### delegate.js — `delegate(root, type, selector, handler, opts?)`
 
@@ -405,3 +410,8 @@ kernel piece and the local-state convention in ~180 lines.
   for only when an input, textarea or contenteditable is focused, which is the
   only case that has a value to protect. Two tests in `test/element.test.js`
   cover both halves. Kernel: 504/600 lines.
+- **Kernel, 2026-09 (fix)**: `new Router({ viewTransitions: false })` applies
+  route changes without a View Transition. While one runs, clicks don't reach
+  the page, so a quick second navigation was lost; `::view-transition
+  { pointer-events: none }` does not help. The default stays `true`.
+  Kernel: 515/600 lines.
