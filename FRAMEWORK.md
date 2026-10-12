@@ -415,3 +415,8 @@ kernel piece and the local-state convention in ~180 lines.
   the page, so a quick second navigation was lost; `::view-transition
   { pointer-events: none }` does not help. The default stays `true`.
   Kernel: 515/600 lines.
+- **Kernel, 2026-10 (fix)**: the router no longer intercepts a reload
+  (`navigationType === 'reload'`). Intercepted, `location.reload()` only
+  re-ran the route, so a page never picked up the code a new service worker
+  had just activated. First router tests (`test/router.test.js`).
+  Kernel: 518/600 lines.
