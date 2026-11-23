@@ -422,7 +422,7 @@ footer .sig { font-family: var(--mono); font-size: .75rem; letter-spacing: .08em
   <div class="wrap sec">
     <div class="sec-head"><p class="sec-num">02</p><p class="sec-label">Examples</p></div>
     <div class="sec-body">
-      <h2>Six live demos, each a few dozen lines</h2>
+      <h2>Seven live demos, each a few dozen lines</h2>
       <div class="prose">
         <p class="muted">
           Every demo runs straight from source with no build step — open devtools
@@ -458,6 +458,11 @@ footer .sig { font-family: var(--mono); font-size: .75rem; letter-spacing: .08em
           <span class="tag">View Transitions</span>
           <strong>Animation</strong>
           <small>List shuffle, sort, add and remove — CSS pairs the cards, morph moves them.</small>
+        </a></li>
+        <li><a href="examples/a2ui/">
+          <span class="tag">Kit</span>
+          <strong>A2UI</strong>
+          <small>An agent's UI sent as data and drawn by the kit's <code>&lt;a2ui-surface&gt;</code>: a booking form with checks, chips, tabs, a modal, and the action it sends back.</small>
         </a></li>
         <li><a href="examples/dbmonster/">
           <span class="tag">Stress test</span>
@@ -546,9 +551,47 @@ footer .sig { font-family: var(--mono); font-size: .75rem; letter-spacing: .08em
   </div>
 </section>
 
+<section id="kit">
+  <div class="wrap sec">
+    <div class="sec-head"><p class="sec-num">05</p><p class="sec-label">The kit</p></div>
+    <div class="sec-body">
+      <h2>Shared parts outside the budget, copied one at a time</h2>
+      <div class="prose" style="margin-bottom:1.4rem">
+        <p class="muted">
+          When two apps carry the same component, it moves to <code>kit/</code>
+          instead of into the kernel. The kit never counts against the 600 lines,
+          the kernel never imports it, and an app copies only the parts it uses.
+        </p>
+      </div>
+      <div class="split">
+        <ul class="checks">
+          <li><strong>A UI standard.</strong> <code>tokens.css</code> fixes the names (surfaces, text, accent, status, space, type) and leaves the values to each app. <code>base.css</code> styles plain elements and a small class vocabulary. Every rule sits in <code>:where()</code>, so one app class overrides it.</li>
+          <li><strong>Named after A2UI.</strong> The classes follow the A2UI basic catalog — <code>row</code>, <code>column</code>, <code>card</code>, <code>field</code>, <code>chips</code> — so an app's own screens and an agent's UI draw from one stylesheet.</li>
+          <li><strong><code>&lt;a2ui-surface&gt;</code>.</strong> Draws an A2UI v1.0 surface from data: all 18 basic components, data binding, checks and actions. Nothing the agent writes runs, and each surface renders in its own shadow root.</li>
+          <li><strong>Confirm and icons.</strong> A two-tap delete with no dialog, and line icons as inline SVG in <code>currentColor</code>.</li>
+          <li><strong>A starter app.</strong> App bar, login, session, offline service worker with an update banner, and one screen built from the recipes in <code>UI.md</code>.</li>
+        </ul>
+        <div>
+          <figure class="code">
+            <figcaption><b>a new app</b><span>shell, kernel and kit in one step</span></figcaption>
+            <pre class="plain"><code class="sh"><span class="l">./new-app.sh ../pantry <span class="tok-str">"Pantry"</span></span></code></pre>
+          </figure>
+          <figure class="code">
+            <figcaption><b>one part into an existing app</b><span>beside its auril/ folder</span></figcaption>
+            <pre class="plain"><code class="sh"><span class="l">./kit.sh ../my-app/web/kit a2ui confirm</span></code></pre>
+          </figure>
+          <p>
+            <a class="go" href="https://github.com/nogo/auril/blob/main/kit/UI.md">Read the UI standard →</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section id="performance">
   <div class="wrap sec">
-    <div class="sec-head"><p class="sec-num">05</p><p class="sec-label">What it costs</p></div>
+    <div class="sec-head"><p class="sec-num">06</p><p class="sec-label">What it costs</p></div>
     <div class="sec-body">
       <h2>DOM morphing vs innerHTML, measured</h2>
 
@@ -609,7 +652,7 @@ footer .sig { font-family: var(--mono); font-size: .75rem; letter-spacing: .08em
 
 <section id="install">
   <div class="wrap sec">
-    <div class="sec-head"><p class="sec-num">06</p><p class="sec-label">Get it</p></div>
+    <div class="sec-head"><p class="sec-num">07</p><p class="sec-label">Get it</p></div>
     <div class="sec-body">
       <h2>You do not install auril.js — you copy it</h2>
       <div class="prose" style="margin-bottom:1.4rem">
@@ -661,7 +704,7 @@ footer .sig { font-family: var(--mono); font-size: .75rem; letter-spacing: .08em
 
 <section id="limits">
   <div class="wrap sec">
-    <div class="sec-head"><p class="sec-num">07</p><p class="sec-label">Honest limits</p></div>
+    <div class="sec-head"><p class="sec-num">08</p><p class="sec-label">Honest limits</p></div>
     <div class="sec-body">
       <h2>When auril.js is the wrong tool</h2>
       <ul class="checks plain" style="max-width:44rem">
@@ -683,6 +726,7 @@ footer .sig { font-family: var(--mono); font-size: .75rem; letter-spacing: .08em
       MIT licensed. <code>src/vendor/idiomorph.js</code> is
       <a href="https://github.com/bigskysoftware/idiomorph">Idiomorph</a> v0.7.4
       under Zero-Clause BSD — the one dependency, vendored and pinned.
+      The kit's icons are drawn from <a href="https://lucide.dev">Lucide</a> (ISC).
     </p>
     <p>
       This page ships no JavaScript at all: static HTML and one stylesheet. The
