@@ -234,6 +234,25 @@ matches `selector` inside `root`. Non-bubbling events (`focus`, `blur`,
 `mouseenter`, `mouseleave`) never reach `root` in the bubble phase — pass
 `{ capture: true }` for those.
 
+### socket.js — `socket(path, handlers?)`
+
+A WebSocket to the page's host that reopens itself. A drop retries after a
+delay that doubles from 0.5 s to 10 s; a tab becoming visible or the network
+returning reconnects at once. `ws:` or `wss:` follows the page.
+
+```js
+const live = socket(`/ws?token=${token}`, {
+  onOpen: () => live.send(JSON.stringify({ t: 'hello', since })), // every connect: resend state
+  onMessage: (data) => receive(JSON.parse(data)),                // passed through as delivered
+  onClose: () => store.set({ status: 'reconnecting' }),          // each drop, not close()
+});
+live.send(text);                       // false while not open; nothing queues
+live.close();                          // stops for good, releases its listeners
+```
+
+The wire format stays app code, as do outboxes and resends. To give up (the
+server refused a token), call `close()` inside `onClose`.
+
 ### dev.js — `dev`
 
 `dev.log(...)` prints `[auril]`-prefixed debug output when enabled — store
@@ -316,13 +335,13 @@ Verify headlessly (dev-time only; typescript is fetched on demand, never a
 project dependency): `bunx tsc -p jsconfig.json`. Apps that vendor the kernel
 add their own ~10-line `jsconfig.json` to get the same checking.
 
-Headless DOM tests (`element.js`, `delegate.js`) use happy-dom via a dev-only
+Headless DOM tests use happy-dom via a dev-only
 `devDependency` and a `test/setup.js` preload (`bunfig.toml`). Like `typescript`,
 it is a dev tool only — never a runtime dependency, never vendored (`vendor.sh`
-copies `src/`, this file, and `LICENSE`). `router.js` and `morph.js` stay
-untested headless: happy-dom has no Navigation API or URLPattern. That is a
-limit of *headless* testing, not of testing — `bench/run.js` already drives a
-real browser and is where those tests belong.
+copies `src/`, this file, and `LICENSE`). Where happy-dom lacks a platform API,
+the test puts a fake on `globalThis` first: `navigation` for the router,
+`WebSocket` for the socket (Bun itself ships `URLPattern`). `morph.js` is tested
+through `AurilElement.update()`; `bench/run.js` drives a real browser.
 
 `src/vendor/idiomorph.d.ts` is a hand-written declaration file, not generated.
 Idiomorph writes its JSDoc in Closure style (`function(X): Y`), which TypeScript
@@ -445,3 +464,5 @@ kernel piece and the local-state convention in ~180 lines.
   Transition. Three of five routing apps turned it off, and the other two had no
   transition CSS. A handler now returns a promise to hold the navigation; drop
   `{ viewTransitions: false }` when re-vendoring. Kernel: 496/600 lines.
+- **Kernel, 2026-11**: new `socket()`. Five apps hand-rolled a reconnecting
+  WebSocket, one with `ws://` hardcoded. Kernel: 551/600 lines.
