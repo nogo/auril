@@ -1,7 +1,7 @@
 # auril.js
 
 A no-build frontend kernel for personal apps to kill the bloat.
-Plain ES modules over web standards: **495 lines of kernel you own** (typed
+Plain ES modules over web standards: **under 600 lines of kernel you own** (typed
 via JSDoc), plus one vendored file (Idiomorph) for DOM morphing. No npm, no
 bundler, no transpilation — the files that ship are the files you wrote.
 
@@ -18,7 +18,7 @@ bloat it was built to escape.
    need it *today*. Until then it lives in the app that wants it.
 2. **Hard size budget: 600 lines** for the kernel (top-level `src/*.js`,
    excluding `src/vendor/`, `test/`, `examples/`, `bench/` — check:
-   `wc -l src/*.js`; currently 515).
+   `wc -l src/*.js`; the latest Versions entry records the count).
    To cross it, delete something first. No subfolders inside `src/` — that
    is how creep starts.
 3. **Near-frozen.** Bug fixes are always welcome. Features must pass the
@@ -178,7 +178,7 @@ tests and hot-swapped modules do.
 
 Design constraint: the public API (`state` getter, `set`, `subscribe`,
 microtask-batched notify) is kept swappable to a future native-signals backend
-(TC39 Signals, **Stage 2** since late 2025 and moving toward Stage 3). Don't add
+(TC39 Signals, **Stage 1** per the TC39 proposals list, checked 2026-11). Don't add
 store API surface a `Signal.State`-based implementation couldn't honor — e.g. no
 synchronous notification guarantees.
 
@@ -418,12 +418,12 @@ kernel piece and the local-state convention in ~180 lines.
 
 ## Versions
 
-- **Idiomorph (vendored)**: v0.7.4 (`src/idiomorph.js` at tag v0.7.4,
+- **Idiomorph (vendored)**: v0.7.4 (`src/vendor/idiomorph.js` at tag v0.7.4,
   2025-09-29, Zero-Clause BSD). Only local change: trailing
   `export {Idiomorph};`. Upgrade by replacing the file from the tag and
   re-appending the export, then re-checking `src/vendor/idiomorph.d.ts` (see
   DX below) against the file's own typedefs. v0.7.x uses `Element.moveBefore()` where available
-  (Chrome 133+), falling back to `insertBefore` — so list reorders preserve
+  (Chrome 133+ and Firefox; not Safari as of 2026-11), falling back to `insertBefore` — so list reorders preserve
   iframe content, running animations, and focus, and do not fire
   disconnect/reconnect on nested custom elements.
 - **Kernel, 2026-08**: `Router` handlers take `(params, url)` and the intercept
