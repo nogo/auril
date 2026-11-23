@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>auril.js — no-build frontend kernel for personal apps</title>
-<meta name="description" content="A 504-line frontend kernel for small web apps: escaped HTML templates, DOM morphing, custom elements, one store, a router. No npm, no bundler, no JSX.">
+<meta name="description" content="A 551-line frontend kernel for small web apps: escaped HTML templates, DOM morphing, custom elements, one store, a router, a socket. No npm, no bundler, no JSX.">
 <link rel="canonical" href="https://nogo.github.io/auril/">
 <meta name="theme-color" content="#faf8f4" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#121110" media="(prefers-color-scheme: dark)">
@@ -13,14 +13,14 @@
 <meta property="og:site_name" content="auril.js">
 <meta property="og:url" content="https://nogo.github.io/auril/">
 <meta property="og:title" content="auril.js — no-build frontend kernel for personal apps">
-<meta property="og:description" content="504 of a 600-line budget. Small by rule, not by accident. No npm, no bundler, no JSX, no virtual DOM.">
+<meta property="og:description" content="551 of a 600-line budget. Small by rule, not by accident. No npm, no bundler, no JSX, no virtual DOM.">
 <meta property="og:image" content="https://nogo.github.io/auril/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="auril.js — a no-build frontend kernel for personal apps. 504 lines, zero dependencies, zero build steps.">
+<meta property="og:image:alt" content="auril.js — a no-build frontend kernel for personal apps. 551 lines, zero dependencies, zero build steps.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="auril.js — no-build frontend kernel for personal apps">
-<meta name="twitter:description" content="504 of a 600-line budget. Small by rule, not by accident.">
+<meta name="twitter:description" content="551 of a 600-line budget. Small by rule, not by accident.">
 <meta name="twitter:image" content="https://nogo.github.io/auril/og.png">
 
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%239a5313'/><text x='16' y='23' font-family='system-ui' font-size='20' font-weight='300' fill='%23fff' text-anchor='middle'>a</text></svg>">
@@ -31,7 +31,7 @@
   "@type": "SoftwareSourceCode",
   "name": "auril.js",
   "alternateName": "auril",
-  "description": "A no-build frontend kernel for personal apps: escaped HTML templates, DOM morphing, custom elements, one store and a Navigation API router in 504 lines of plain ES modules.",
+  "description": "A no-build frontend kernel for personal apps: escaped HTML templates, DOM morphing, custom elements, one store, a Navigation API router and a reconnecting WebSocket in 551 lines of plain ES modules.",
   "url": "https://nogo.github.io/auril/",
   "codeRepository": "https://github.com/nogo/auril",
   "programmingLanguage": "JavaScript",
@@ -347,22 +347,23 @@ footer .sig { font-family: var(--mono); font-size: .75rem; letter-spacing: .08em
         <span>Kernel size</span>
         <span>enforced in CI</span>
       </figcaption>
-      <p class="meter-figure"><b>504</b> <span>of a 600-line budget</span></p>
-      <div class="meter-bar" role="img" aria-label="504 of 600 lines used across eight files, leaving 96 lines of headroom">
-        <span style="--n:151" title="element.js — 151 lines"></span>
-        <span style="--n:142; opacity:.92" title="store.js — 142 lines"></span>
-        <span style="--n:100; opacity:.84" title="router.js — 100 lines"></span>
-        <span style="--n:50; opacity:.76" title="html.js — 50 lines"></span>
-        <span style="--n:26; opacity:.68" title="morph.js — 26 lines"></span>
-        <span style="--n:18; opacity:.6" title="delegate.js — 18 lines"></span>
-        <span style="--n:10; opacity:.52" title="dev.js — 10 lines"></span>
-        <span style="--n:7; opacity:.44" title="index.js — 7 lines"></span>
-        <span class="headroom" style="--n:96" title="96 lines of remaining headroom"></span>
+      <p class="meter-figure"><b>551</b> <span>of a 600-line budget</span></p>
+      <div class="meter-bar" role="img" aria-label="551 of 600 lines used across nine files, leaving 49 lines of headroom">
+        <span style="--n:153" title="element.js — 153 lines"></span>
+        <span style="--n:145; opacity:0.92" title="store.js — 145 lines"></span>
+        <span style="--n:87; opacity:0.84" title="router.js — 87 lines"></span>
+        <span style="--n:54; opacity:0.76" title="socket.js — 54 lines"></span>
+        <span style="--n:50; opacity:0.68" title="html.js — 50 lines"></span>
+        <span style="--n:26; opacity:0.6" title="morph.js — 26 lines"></span>
+        <span style="--n:18; opacity:0.52" title="delegate.js — 18 lines"></span>
+        <span style="--n:10; opacity:0.44" title="dev.js — 10 lines"></span>
+        <span style="--n:8; opacity:0.36" title="index.js — 8 lines"></span>
+        <span class="headroom" style="--n:49" title="49 lines of remaining headroom"></span>
       </div>
       <div class="meter-ticks" aria-hidden="true"></div>
       <div class="meter-scale" aria-hidden="true"><span>0</span><span>600 lines</span></div>
       <p class="meter-note">
-        Eight files, and the hatched remainder is all the room left. To cross
+        Nine files, and the hatched remainder is all the room left. To cross
         the budget, something has to be deleted first — the check runs on every
         push, so the number cannot drift.
       </p>
@@ -451,7 +452,7 @@ footer .sig { font-family: var(--mono); font-size: .75rem; letter-spacing: .08em
         <li><a href="examples/router/">
           <span class="tag">Navigation API</span>
           <strong>Router</strong>
-          <small>Routing with params, deep links, back/forward, and view transitions between views.</small>
+          <small>Routing with params, deep links, back/forward, and an opt-in view transition between views.</small>
         </a></li>
         <li><a href="examples/animation/">
           <span class="tag">View Transitions</span>
@@ -509,18 +510,19 @@ footer .sig { font-family: var(--mono); font-size: .75rem; letter-spacing: .08em
   <div class="wrap sec">
     <div class="sec-head"><p class="sec-num">04</p><p class="sec-label">The kernel</p></div>
     <div class="sec-body">
-      <h2>Eight files, readable in one sitting</h2>
+      <h2>Nine files, readable in one sitting</h2>
       <div class="split" style="margin-top:1.4rem">
         <ol class="files">
-          <li style="--n:151"><span class="fn">element.js</span><span class="bar"></span><span class="what">AurilElement base class</span><span class="num">151</span></li>
-          <li style="--n:142"><span class="fn">store.js</span><span class="bar"></span><span class="what">observable store</span><span class="num">142</span></li>
-          <li style="--n:100"><span class="fn">router.js</span><span class="bar"></span><span class="what">Navigation API router</span><span class="num">100</span></li>
+          <li style="--n:153"><span class="fn">element.js</span><span class="bar"></span><span class="what">AurilElement base class</span><span class="num">153</span></li>
+          <li style="--n:145"><span class="fn">store.js</span><span class="bar"></span><span class="what">observable store</span><span class="num">145</span></li>
+          <li style="--n:87"><span class="fn">router.js</span><span class="bar"></span><span class="what">Navigation API router</span><span class="num">87</span></li>
+          <li style="--n:54"><span class="fn">socket.js</span><span class="bar"></span><span class="what">reconnecting WebSocket</span><span class="num">54</span></li>
           <li style="--n:50"><span class="fn">html.js</span><span class="bar"></span><span class="what">escaped template tag</span><span class="num">50</span></li>
           <li style="--n:26"><span class="fn">morph.js</span><span class="bar"></span><span class="what">Idiomorph wrapper</span><span class="num">26</span></li>
           <li style="--n:18"><span class="fn">delegate.js</span><span class="bar"></span><span class="what">event delegation</span><span class="num">18</span></li>
           <li style="--n:10"><span class="fn">dev.js</span><span class="bar"></span><span class="what">opt-in debug logging</span><span class="num">10</span></li>
-          <li style="--n:7"><span class="fn">index.js</span><span class="bar"></span><span class="what">public exports</span><span class="num">7</span></li>
-          <li class="total"><span>8 files · one vendored dependency</span><span>504 / 600</span></li>
+          <li style="--n:8"><span class="fn">index.js</span><span class="bar"></span><span class="what">public exports</span><span class="num">8</span></li>
+          <li class="total"><span>9 files · one vendored dependency</span><span>551 / 600</span></li>
         </ol>
 
         <dl class="api">
@@ -529,11 +531,13 @@ footer .sig { font-family: var(--mono); font-size: .75rem; letter-spacing: .08em
           <dt>morph()</dt>
           <dd>Updates an element's children to match an HTML string while preserving focus, selection, scroll and node identity. Idiomorph underneath, using <code>moveBefore()</code> where available, so reorders do not restart animations or remount nested components.</dd>
           <dt>AurilElement</dt>
-          <dd>A light-DOM custom element base. <code>on()</code> and <code>delegate()</code> auto-remove on disconnect, <code>watch()</code> subscribes to the store, and <code>update()</code> morphs — skipping the work entirely when the rendered string is unchanged.</dd>
+          <dd>A light-DOM custom element base. <code>on()</code> and <code>delegate()</code> auto-remove on disconnect, <code>watch()</code> subscribes to the store, and <code>update()</code> morphs — skipping the work entirely when the rendered string is unchanged, and leaving nested components to render themselves.</dd>
           <dt>Store</dt>
           <dd>One observable state container. Updates batch per microtask, selected keys persist to <code>localStorage</code>, and persisted slices sync across browser tabs.</dd>
           <dt>Router</dt>
-          <dd>Built on the Navigation API and <code>URLPattern</code> — no click hijacking, no <code>popstate</code> juggling. Route changes are wrapped in a View Transition.</dd>
+          <dd>Built on the Navigation API and <code>URLPattern</code> — no click hijacking, no <code>popstate</code> juggling. A handler that returns a promise holds the navigation until the new view is in place.</dd>
+          <dt>socket()</dt>
+          <dd>A WebSocket to the page's host that reopens itself: retries back off from 0.5 s to 10 s, and a tab coming back or the network returning reconnects at once.</dd>
           <dt>delegate(), dev</dt>
           <dd>Event delegation from a root element, and <code>[auril]</code>-prefixed debug logging you switch on with <code>?auril-dev</code> in the URL.</dd>
         </dl>
@@ -664,7 +668,7 @@ footer .sig { font-family: var(--mono); font-size: .75rem; letter-spacing: .08em
         <li><strong>You need old browsers.</strong> <code>Router</code> requires the Navigation API and <code>URLPattern</code> — Baseline newly available 2026 (Chrome 102+, Firefox 147+, Safari 26.2+), with no fallback.</li>
         <li><strong>You need server rendering.</strong> auril renders in the browser. There is no SSR story and none is planned.</li>
         <li><strong>You have views that genuinely cannot be split under ~250 nodes.</strong> Morphing walks the whole tree every update; a 1000-node component pays ~30 ms per update under throttle.</li>
-        <li><strong>You are a team that needs an ecosystem.</strong> No plugins, no devtools extension, no Stack Overflow answers. The compensation is that the whole thing is 504 lines you can read.</li>
+        <li><strong>You are a team that needs an ecosystem.</strong> No plugins, no devtools extension, no Stack Overflow answers. The compensation is that the whole thing is 551 lines you can read.</li>
         <li><strong>You want semver and a registry.</strong> Vendoring is the distribution model, on purpose.</li>
         <li><strong>You want a framework that grows with you.</strong> This one is near-frozen by design. If your app outgrows it, the exit is the same as the entry: plain ES modules over web standards, so you leave with your code intact.</li>
       </ul>

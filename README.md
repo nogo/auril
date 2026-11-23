@@ -7,8 +7,8 @@ stateful web apps without npm, a bundler, transpilation, JSX, a virtual DOM, or
 a component compiler. Files ship as plain ES modules. The debugger shows the
 same source you wrote.
 
-The kernel is intentionally small: top-level `src/*.js` currently fits in 495
-lines, plus one vendored DOM morphing file.
+The kernel is intentionally small: top-level `src/*.js` stays under a 600-line
+budget, enforced in CI, plus one vendored DOM morphing file.
 
 ## Why
 
@@ -181,6 +181,10 @@ Useful methods:
   slice changes by `===`.
 - `this.update()` morphs the element to match `render()` — skipped when the
   rendered string is unchanged, so broad `watch()` subscriptions stay cheap.
+  It never morphs into a nested `AurilElement`, which renders itself; give a
+  nested component an `id` and attributes that name what it shows. For work
+  after the render (focus, measuring), override `update()` and call
+  `super.update()` first.
 
 `on()`, `delegate()`, and `watch()` throw when called before connect or after
 disconnect — call them from `onConnect()`. A failing `render()` is passed to
@@ -254,10 +258,10 @@ submissions, and cross-origin navigations are left to the browser, as are
 unmatched paths when no `notFound` handler is registered. GET form submissions
 are ordinary navigations and stay routed. `start()` throws if called twice.
 
-Intercepted route changes are wrapped in a View Transition and the intercept
-handler awaits it, so the browser does not restore scroll or reset focus before
-the new view is in place. The initial resolve in `start()` runs without a
-transition — it would otherwise cross-fade from a blank page.
+A route handler may return a promise, and the navigation finishes once it
+settles. An app that wants a View Transition returns its `updateCallbackDone`,
+so the browser does not restore scroll or reset focus before the new view is in
+place.
 
 ### `delegate`
 
@@ -277,6 +281,23 @@ reconnects.
 
 Non-bubbling events (`focus`, `blur`, `mouseenter`, `mouseleave`) never reach
 `root` in the bubble phase — pass `{ capture: true }` for those.
+
+### `socket`
+
+`socket(path, handlers)` opens a WebSocket to the page's host (`ws:` or `wss:`
+follows the page) and reopens it after a drop: retries back off from 0.5 s to
+10 s, and a tab becoming visible or the network returning reconnects at once.
+
+```js
+const live = socket('/ws', {
+  onOpen: () => live.send(JSON.stringify({ t: 'hello' })), // every connect
+  onMessage: (data) => receive(JSON.parse(data)),          // passed through as delivered
+  onClose: () => store.set({ status: 'reconnecting' }),    // each drop
+});
+```
+
+`send()` returns `false` while the socket is not open; nothing queues. `close()`
+stops it for good — call it inside `onClose` to give up.
 
 ### `dev`
 
@@ -355,7 +376,8 @@ src/
   morph.js       Idiomorph wrapper
   element.js     AurilElement
   store.js       observable store
-  router.js      History API router
+  router.js      Navigation API router
+  socket.js      reconnecting WebSocket
   delegate.js    event delegation helper
   dev.js         opt-in debug logging
   index.js       public exports
