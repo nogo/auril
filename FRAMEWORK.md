@@ -186,8 +186,8 @@ synchronous notification guarantees.
 
 Client-side router built on the **Navigation API** and **URLPattern**
 (`:param` and `*` syntax) — both Baseline newly available 2026 (Chrome 102+,
-Firefox 147+, Safari 26.2+); no fallback. Wraps route changes in a View
-Transition when supported, unless constructed with `viewTransitions: false`.
+Firefox 147+, Safari 26.2+); no fallback. View Transitions are app code: a
+handler opts in by returning one's `updateCallbackDone`.
 
 ```js
 new Router()
@@ -211,17 +211,21 @@ GET form submissions are ordinary same-origin navigations and stay routed. An
 unmatched path with no `notFound` handler falls through to a real browser
 navigation. `start()` takes no options and throws if called twice.
 
-Intercepted route changes are wrapped in a View Transition when supported, and
-the intercept handler awaits it — `startViewTransition` runs its callback in a
-*later* frame, so a handler that returned immediately would let the Navigation
-API restore scroll and reset focus against the pre-update DOM. The initial
-resolve in `start()` runs bare: a transition there would cross-fade from a blank
-page and cost a frame before first paint.
+A handler may return a promise; the navigation finishes once it settles, so the
+browser restores scroll and resets focus against the new DOM. That is how an app
+opts into a View Transition — `startViewTransition` runs its callback in a
+*later* frame, so the handler returns `updateCallbackDone`:
 
-`new Router({ viewTransitions: false })` applies every route change directly,
-without `startViewTransition`; the option defaults to `true`. Reach for it when
-no navigation may be lost: while a View Transition runs, clicks don't reach the
-page, and `::view-transition { pointer-events: none }` does not change that.
+```js
+const show = (view) => started && document.startViewTransition
+  ? document.startViewTransition(() => store.set({ view })).updateCallbackDone
+  : store.set({ view });
+```
+
+Skip the transition for the first resolve in `start()` (it would cross-fade from
+a blank page), and leave it out where no click may be lost: while a
+document-wide transition runs, clicks don't reach the page.
+`examples/router/` shows the whole pattern.
 
 ### delegate.js — `delegate(root, type, selector, handler, opts?)`
 
@@ -437,3 +441,7 @@ kernel piece and the local-state convention in ~180 lines.
 - **Kernel, 2026-11 (fix)**: `Store` no longer calls a subscriber unsubscribed
   earlier in the same batch: a child disconnected by a parent's re-render
   rendered against state that had lost its data. Kernel: 523/600 lines.
+- **Kernel, 2026-11**: `Router` lost `viewTransitions` and its built-in View
+  Transition. Three of five routing apps turned it off, and the other two had no
+  transition CSS. A handler now returns a promise to hold the navigation; drop
+  `{ viewTransitions: false }` when re-vendoring. Kernel: 496/600 lines.

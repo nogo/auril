@@ -2,8 +2,9 @@ import { dev } from './dev.js';
 
 /**
  * Handlers receive the matched `:params` and the destination `URL`. Routes match
- * on `url.pathname` only — read `url.searchParams` for query state.
- * @typedef {(params: Record<string, string | undefined>, url: URL) => void} RouteHandler
+ * on `url.pathname` only — read `url.searchParams` for query state. A handler may
+ * return a promise; the navigation finishes once it settles.
+ * @typedef {(params: Record<string, string | undefined>, url: URL) => unknown} RouteHandler
  */
 
 // Navigation API + URLPattern globals (Baseline newly available 2026).
@@ -14,9 +15,9 @@ const navigationImpl = /** @type {any} */ (globalThis).navigation;
 /**
  * Client-side router built on the Navigation API and URLPattern (':param' and
  * '*' syntax). One `navigate` listener intercepts same-origin navigations —
- * link clicks, back/forward, and go(); a reload is left to the browser. Intercepted route changes are wrapped in
- * a View Transition when supported, unless constructed with
- * `{ viewTransitions: false }`; the initial resolve in start() is not.
+ * link clicks, back/forward, and go(); a reload is left to the browser.
+ * The navigation finishes when the handler's returned promise settles, so the
+ * browser restores scroll and resets focus against the new DOM.
  */
 export class Router {
   /** @type {{ pattern: any, handler: RouteHandler }[]} */
@@ -24,16 +25,6 @@ export class Router {
   /** @type {((url: URL) => void) | null} */
   #notFound = null;
   #started = false;
-  #viewTransitions;
-
-  /**
-   * Pass `viewTransitions: false` when every navigation must apply at once:
-   * while a View Transition runs, clicks don't reach the page.
-   * @param {{ viewTransitions?: boolean }} [options]
-   */
-  constructor({ viewTransitions = true } = {}) {
-    this.#viewTransitions = viewTransitions;
-  }
 
   /**
    * route('/blog/:slug/comments/:year', ({ slug, year }) => ...) — chainable.
@@ -65,10 +56,8 @@ export class Router {
       if (event.navigationType === 'reload') return;
       const apply = this.#match(new URL(event.destination.url));
       if (!apply) return; // no route, no notFound — let the browser navigate
-      event.intercept({ handler: () => this.#transition(apply) });
+      event.intercept({ handler: async () => { await apply(); } });
     });
-    // The initial resolve runs bare: a View Transition here would cross-fade
-    // from a blank page and cost a frame before first paint.
     this.#match(new URL(location.href))?.();
     return this;
   }
@@ -82,7 +71,7 @@ export class Router {
     navigationImpl.navigate(path, { history: replace ? 'replace' : 'push' });
   }
 
-  /** @param {URL} url @returns {(() => void) | null} thunk running the matched handler */
+  /** @param {URL} url @returns {(() => unknown) | null} thunk running the matched handler */
   #match(url) {
     for (const { pattern, handler } of this.#routes) {
       const match = pattern.exec({ pathname: url.pathname });
@@ -94,21 +83,5 @@ export class Router {
     dev.log('route (not found)', url.pathname);
     const notFound = this.#notFound;
     return notFound ? () => notFound(url) : null;
-  }
-
-  /**
-   * Run the route handler, cross-faded when enabled and the browser supports it.
-   * Returns a promise that settles once the DOM is updated — startViewTransition
-   * invokes its callback in a *later* frame, so returning nothing would let the
-   * Navigation API finish the navigation (and restore scroll, reset focus)
-   * against the old DOM.
-   * @param {() => void} apply @returns {Promise<void>}
-   */
-  #transition(apply) {
-    if (!this.#viewTransitions || !document.startViewTransition) {
-      apply();
-      return Promise.resolve();
-    }
-    return document.startViewTransition(apply).updateCallbackDone;
   }
 }
