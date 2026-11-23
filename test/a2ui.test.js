@@ -28,10 +28,10 @@ const form = [
   { id: 'root', component: 'Column', children: ['name', 'send'] },
   { id: 'name', component: 'TextField', label: 'Name', value: { '@path': '/form/name' },
     '@checks': [{ condition: { '@call': 'required', args: { value: { '@path': '/form/name' } } }, message: 'Name is required' }] },
-  { id: 'send', component: 'Button', child: 'send-label', variant: 'primary',
+  { id: 'send', component: 'Button', child: 'send_label', variant: 'primary',
     '@checks': [{ condition: { '@call': 'required', args: { value: { '@path': '/form/name' } } } }],
     action: { event: { name: 'submit', context: { name: { '@path': '/form/name' }, kind: 'new' } } } },
-  { id: 'send-label', component: 'Text', text: 'Send' },
+  { id: 'send_label', component: 'Text', text: 'Send' },
 ];
 
 test('parseMessages reads one JSON value, an array, or JSON Lines', () => {
@@ -48,6 +48,8 @@ test('check names what is missing or wrong', () => {
   expect(check(JSON.stringify(create([{ id: 'root', component: 'Marquee' }])))).toBe('root: unknown component "Marquee"');
   expect(check(JSON.stringify(create([{ id: 'root', component: 'Text', text: 'a', color: 'red' }])))).toBe('root: Text has no property color');
   expect(check(JSON.stringify(create([{ id: 'root', component: 'Button', child: 'x' }])))).toBe('root: Button needs action');
+  expect(check(JSON.stringify(create([{ id: 'root', component: 'Column', children: ['a-b'] }, { id: 'a-b', component: 'Text', text: 'x' }])))).toContain('"a-b" is no valid id');
+  expect(check(JSON.stringify(create([{ id: '1st', component: 'Text', text: 'x' }])))).toContain('"1st" is no valid id');
   expect(check(JSON.stringify({ version: '0.9', createSurface: {} }))).toContain('version must be "1.0"');
   expect(check(JSON.stringify({ version: '1.0', createSurface: { surfaceId: 's', catalogId: 'x' } }))).toContain('unknown catalog');
 });
@@ -211,8 +213,8 @@ test('a component that points at itself draws a notice instead of hanging', () =
 test('a modal trigger opens its dialog instead of running the button', () => {
   const { el, view } = mount([create([
     { id: 'root', component: 'Modal', trigger: 'open', content: 'body' },
-    { id: 'open', component: 'Button', child: 'open-label', action: { event: { name: 'never' } } },
-    { id: 'open-label', component: 'Text', text: 'Open' },
+    { id: 'open', component: 'Button', child: 'open_label', action: { event: { name: 'never' } } },
+    { id: 'open_label', component: 'Text', text: 'Open' },
     { id: 'body', component: 'Text', text: 'Inside' },
   ])]);
   let sent = 0;

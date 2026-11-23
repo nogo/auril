@@ -166,9 +166,13 @@ export class Surface {
   }
 }
 
+// A2UI v1.0 ComponentId: a UAX #31 identifier, so no hyphen and no leading digit.
+const COMPONENT_ID = /^[\p{XID_Start}_][\p{XID_Continue}]*$/u;
+
 /** @param {any} c */
 function checkComponent(c) {
   if (!c || typeof c !== 'object' || typeof c.id !== 'string' || !c.id) throw new Error('a component needs a string id');
+  if (!COMPONENT_ID.test(c.id)) throw new Error(`${JSON.stringify(c.id)} is no valid id: use letters, digits and _, not - or a leading digit`);
   const spec = CATALOG[c.component];
   if (!spec) throw new Error(`${c.id}: unknown component ${JSON.stringify(c.component)}`);
   if (c['@catalogId'] !== undefined && c['@catalogId'] !== BASIC_CATALOG) throw new Error(`${c.id}: unknown catalog ${JSON.stringify(c['@catalogId'])}`);
