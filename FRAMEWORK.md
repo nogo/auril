@@ -24,7 +24,9 @@ bloat it was built to escape.
 3. **Near-frozen.** Bug fixes are always welcome. Features must pass the
    checklist below — the default answer is **no**.
 4. **App code stays in apps.** API layers, formatting helpers, components —
-   never generalize them "for later".
+   never generalize them "for later". A component that two apps carry today
+   moves to `kit/` (see `kit/KIT.md`): vendored per component, outside the
+   kernel and its budget.
 5. **Vendored, pinned, never published.** Apps copy the kernel via
    `vendor.sh` and upgrade deliberately. No registry, no auto-update.
 6. **This file is the contract.** Every kernel change updates FRAMEWORK.md in
