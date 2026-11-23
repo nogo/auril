@@ -160,7 +160,8 @@ const unsub = store.subscribe((state) => ...);
 
 Notifications are **batched per microtask**: N synchronous `set()` calls →
 one notify with the final state; a subscriber that throws is caught and logged
-so it never blocks the rest of the batch. Persisted keys are hydrated on
+so it never blocks the rest of the batch, and one unsubscribed earlier in the
+batch (a child a re-render disconnected) is not called. Persisted keys are hydrated on
 construction and written **once per microtask batch** (same cadence as
 notifications); storage failures (quota, tests) degrade silently to in-memory.
 An optional `version` discards incompatible saved data (defaults win) instead
@@ -433,3 +434,6 @@ kernel piece and the local-state convention in ~180 lines.
   morph wiped the child's content and the child's memo kept it empty. sidenote
   and german replaced `update()` to avoid it — drop those overrides.
   Kernel: 520/600 lines.
+- **Kernel, 2026-11 (fix)**: `Store` no longer calls a subscriber unsubscribed
+  earlier in the same batch: a child disconnected by a parent's re-render
+  rendered against state that had lost its data. Kernel: 523/600 lines.

@@ -58,7 +58,10 @@ export class Store {
     queueMicrotask(() => {
       this.#pending = false;
       this.#persist();
+      // A subscriber can unsubscribe another mid-batch (a re-render disconnects
+      // a child); the copy keeps iteration stable, the has() check honours it.
       for (const fn of [...this.#subs]) {
+        if (!this.#subs.has(fn)) continue;
         try { fn(this.#state); } catch (err) { console.error('[auril] subscriber failed', err); }
       }
     });

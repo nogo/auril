@@ -52,6 +52,21 @@ test('unsubscribe stops notifications', async () => {
   expect(calls).toBe(1);
 });
 
+test('a subscriber removed earlier in the same notify is not called', async () => {
+  // A parent's re-render can disconnect a child, which unsubscribes it; the
+  // child must not then render against state that no longer has its data.
+  const s = new Store({ n: 0 });
+  /** @type {string[]} */
+  const calls = [];
+  /** @type {() => void} */
+  let unsubB = () => {};
+  s.subscribe(() => { calls.push('a'); unsubB(); });
+  unsubB = s.subscribe(() => calls.push('b'));
+  s.set({ n: 1 });
+  await tick();
+  expect(calls).toEqual(['a']);
+});
+
 test('persist writes once per microtask batch', async () => {
   let writes = 0;
   setLocalStorage({ getItem: () => null, setItem: () => { writes++; } });
