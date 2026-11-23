@@ -1,7 +1,7 @@
 import { test, expect } from 'bun:test';
 import { A2uiSurface, BASIC_CATALOG, Surface, check, mediaUrl, parseMessages } from '../kit/a2ui.js';
 
-A2uiSurface.css = ''; // happy-dom cannot fetch file: URLs
+A2uiSurface.css = []; // happy-dom cannot fetch file: URLs
 
 const tick = () => new Promise((resolve) => queueMicrotask(resolve));
 

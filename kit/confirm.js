@@ -59,7 +59,7 @@ export class Confirm {
 
   /**
    * Makes Escape and leaving focus disarm inside el. Call from onConnect().
-   * @param {import('../src/element.js').AurilElement} el
+   * @param {import('../src/index.js').AurilElement} el
    */
   wire(el) {
     el.delegate('keydown', '[data-confirm]', (e) => { if (/** @type {KeyboardEvent} */ (e).key === 'Escape') this.reset(); });

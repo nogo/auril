@@ -17,6 +17,12 @@ kernel never imports them.
 
 ## Components
 
+### base — `tokens.css`, `base.css`
+
+The token contract and the house styles, named after the A2UI catalog.
+`UI.md` is the guideline: tokens, classes, states, recipes and the starter.
+A new app gets them from `./new-app.sh`; `a2ui` brings them along.
+
 ### a2ui — `<a2ui-surface>`, `check()`
 
 Draws an [A2UI v1.0](https://a2ui.org/specification/v1.0-a2ui/) surface from
@@ -38,11 +44,10 @@ el.addEventListener('a2ui-action', (e) => send(e.detail));  // { version, action
 - The source is one JSON value (a message or an array) or JSON Lines.
 - Each surface draws into its own **shadow root**. A parent's morph never
   wipes it, on any kernel version, and the host's CSS never reaches in.
-- **Colours come from the host** through custom properties, which inherit into
-  the shadow root: `--surface`, `--surface-sunken`, `--surface-raised`,
-  `--border`, `--text-muted`, `--accent`, `--on-accent`, `--error`, `--radius`,
-  `--font-mono`. Each has a fallback. An app with other names maps them on the
-  element: `a2ui-surface { --accent: var(--primary); }`.
+- **It looks like the app.** The shadow root links `base.css` then
+  `a2ui.css`, and the page's tokens (`tokens.css`) inherit into it. The page
+  must load `tokens.css`; an app with other names maps them in its `:root`
+  (`--danger: var(--error);`).
 - **Media:** `A2uiSurface.mediaUrl` decides which `Image`, `Video` and
   `AudioPlayer` URLs load. The default follows the A2UI guide: http(s) with a
   host, `data:`, or a same-host path. An app that must not reach other hosts

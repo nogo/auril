@@ -9,8 +9,9 @@
 // show the source as code with that reason instead of a broken surface.
 //
 // Each surface draws into its own shadow root, so a parent's morph never wipes
-// it and the host's CSS never reaches in. Colours come in through the CSS
-// custom properties listed in kit/KIT.md, which inherit into the shadow root.
+// it and the host's CSS never reaches in. Colours come in through the tokens
+// of kit/tokens.css, which inherit into the shadow root, and the classes are
+// kit/base.css's, so an app screen and a surface look alike.
 //
 // Covered: createSurface, updateComponents, updateDataModel, deleteSurface;
 // all 18 basic components; the 14 basic functions and @index; @checks.
@@ -526,12 +527,12 @@ class Draw {
 
   /** @param {Component} c @param {Scope} scope @param {number} depth */
   Row(c, scope, depth) {
-    return html`<div class="flex" style="justify-content: ${pick(FLEX, c.justify, 'flex-start')}; align-items: ${pick(FLEX, c.align, 'stretch')}">${this.children(c.children, scope, depth, true)}</div>`;
+    return html`<div class="row" style="justify-content: ${pick(FLEX, c.justify, 'flex-start')}; align-items: ${pick(FLEX, c.align, 'stretch')}">${this.children(c.children, scope, depth, true)}</div>`;
   }
 
   /** @param {Component} c @param {Scope} scope @param {number} depth */
   Column(c, scope, depth) {
-    return html`<div class="flex" style="justify-content: ${pick(FLEX, c.justify, 'flex-start')}; align-items: ${pick(FLEX, c.align, 'stretch')}">${this.children(c.children, scope, depth, true)}</div>`;
+    return html`<div class="column" style="justify-content: ${pick(FLEX, c.justify, 'flex-start')}; align-items: ${pick(FLEX, c.align, 'stretch')}">${this.children(c.children, scope, depth, true)}</div>`;
   }
 
   /** @param {Component} c @param {Scope} scope @param {number} depth */
@@ -542,7 +543,7 @@ class Draw {
 
   /** @param {Component} c @param {Scope} scope @param {number} depth */
   Card(c, scope, depth) {
-    return this.node(c.child, scope, depth + 1);
+    return html`<div class="card">${this.node(c.child, scope, depth + 1)}</div>`;
   }
 
   /** @param {Component} c @param {Scope} scope @param {number} depth @param {string} key @returns {unknown} */
@@ -639,8 +640,8 @@ class Draw {
  * action runs.
  */
 export class A2uiSurface extends AurilElement {
-  /** Where the surface's CSS lives; a <link> in each shadow root loads it. Empty loads none. */
-  static css = new URL('./a2ui.css', import.meta.url).href;
+  /** The stylesheets each shadow root links: the house styles, then the surface's own. Empty links none. */
+  static css = [new URL('./base.css', import.meta.url).href, new URL('./a2ui.css', import.meta.url).href];
   /** Which media URL may load, or '' for none. Replace it to forbid other hosts. */
   static mediaUrl = mediaUrl;
 
@@ -681,7 +682,7 @@ export class A2uiSurface extends AurilElement {
   onConnect() {
     if (!this.shadowRoot) {
       const root = this.attachShadow({ mode: 'open' });
-      const css = A2uiSurface.css && `<link rel="stylesheet" href="${String(html`${A2uiSurface.css}`)}">`;
+      const css = A2uiSurface.css.map((href) => `<link rel="stylesheet" href="${String(html`${href}`)}">`).join('');
       root.innerHTML = `${css}<div class="a2ui"></div>`;
     }
     const root = /** @type {ShadowRoot} */ (this.shadowRoot);

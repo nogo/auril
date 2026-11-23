@@ -1,0 +1,5 @@
+/* This app's look: token values first, then the few rules kit/base.css does
+   not cover. Set values here; never rename a token (kit/UI.md). */
+:root {
+  /* --accent: light-dark(oklch(0.48 0.13 45), oklch(0.76 0.11 50)); */
+}
