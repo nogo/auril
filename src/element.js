@@ -142,7 +142,9 @@ export class AurilElement extends HTMLElement {
       const next = String(self.render());
       if (next === this.#lastHtml) return dev.log('update', this.localName, '(unchanged, skipped)');
       dev.log('update', this.localName);
-      morph(this, next);
+      // A nested AurilElement renders itself; this markup holds only its empty
+      // tag, so morphing into it would wipe its content behind its memo.
+      morph(this, next, { callbacks: { beforeNodeMorphed: (node) => !(node instanceof AurilElement) } });
       this.#lastHtml = next;
     } catch (err) {
       reportError(new Error(`[auril] render failed in <${this.localName}>`, { cause: err }));

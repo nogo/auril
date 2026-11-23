@@ -135,6 +135,14 @@ customElements.define('monthly-list', MonthlyList);
   never from an async callback that may land after the element is gone. The
   aborted-signal case matters because `addEventListener` with an already-aborted
   signal is a silent no-op.
+- **Nested components render themselves.** A parent's `update()` never morphs
+  into a nested `AurilElement`: the parent's markup holds only its empty tag, and
+  morphing into it would wipe the child's content behind the child's memo. The
+  nested node is skipped whole, attributes included — so give it an `id` and
+  attributes that name *what* it shows (`<task-card id="card-7" task-id="7">`),
+  and a different item gets a different node.
+- Work after the render (focus, measuring, CSSOM styles): override `update()`
+  and call `super.update()` first. It runs even when the morph was skipped.
 
 Light DOM only — global CSS applies; no shadow root.
 
@@ -420,3 +428,8 @@ kernel piece and the local-state convention in ~180 lines.
   re-ran the route, so a page never picked up the code a new service worker
   had just activated. First router tests (`test/router.test.js`).
   Kernel: 518/600 lines.
+- **Kernel, 2026-11 (fix)**: `AurilElement.update()` no longer morphs into a
+  nested `AurilElement`. The parent's markup holds only its empty tag, so the
+  morph wiped the child's content and the child's memo kept it empty. sidenote
+  and german replaced `update()` to avoid it — drop those overrides.
+  Kernel: 520/600 lines.

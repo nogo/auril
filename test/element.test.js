@@ -146,3 +146,16 @@ test('update() morphs fresh after reconnect', () => {
   document.body.append(el); // connect runs update(); memo must not skip
   expect(el.querySelector('p.x')?.textContent).toBe('hi');
 });
+
+test('a parent update leaves the rendered content of a nested component alone', () => {
+  const child = create({ render() { return '<b>child</b>'; } });
+  const parent = create({ n: 0, render() { return `<p>${this.n}</p><${child.localName} id="c"></${child.localName}>`; } });
+  document.body.append(parent);
+  expect(parent.querySelector('#c')?.innerHTML).toBe('<b>child</b>');
+
+  parent.n = 1;
+  parent.update(); // the parent's markup holds an empty tag; the child renders itself
+  expect(parent.querySelector('p')?.textContent).toBe('1');
+  expect(parent.querySelector('#c')?.innerHTML).toBe('<b>child</b>');
+  parent.remove();
+});
